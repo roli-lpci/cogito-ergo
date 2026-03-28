@@ -15,3 +15,5 @@ snapshot.md
 *.chroma/
 .cogito/store/
 .pytest_cache/
+PENDING-PAPER*.md
+TODO.md

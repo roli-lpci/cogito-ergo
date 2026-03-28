@@ -5,7 +5,27 @@ Two-stage memory retrieval for AI agents. **85% R@1, 96% hit@any** on 31 test ca
 [![PyPI version](https://img.shields.io/pypi/v/cogito-ergo)](https://pypi.org/project/cogito-ergo/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/cogito-ergo/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Made by Hermes Labs](https://img.shields.io/badge/made%20by-Hermes%20Labs-8a2be2)](https://github.com/roli-lpci)
+[![Made by Hermes Labs](https://img.shields.io/badge/made%20by-Hermes%20Labs-purple)](https://hermes-labs.ai)
+
+---
+
+## The Problem
+
+Every retrieval system that uses an LLM to select or rank memories has the same failure mode: the LLM rephrases on the way out. You store `"auth tokens expire after 3600 seconds"` and get back `"authentication has a configurable timeout."` The specific fact is gone.
+
+- **Raw vector search** returns candidates by similarity, but precision plateaus at 50–60% R@1 on real workloads
+- **LLM-based re-rankers** improve relevance but generate text — they summarize, merge, or hallucinate into the content your agent receives
+- **Full RAG pipelines** add latency and cost without solving the fidelity problem
+
+cogito-ergo fixes this structurally. The filter LLM outputs only integer pointers (`[3, 7, 12]`). The server dereferences them to verbatim stored text. The LLM never sees, generates, or touches memory content. Fidelity is architectural, not a prompting convention.
+
+| Mode | R@1 | hit@any | Latency |
+|---|---|---|---|
+| **Combined (snapshot + recall)** | **85%** | **96%** | 1303ms |
+| recall only | 63% | 81% | 1197ms |
+| recall_b (zero-LLM) | 56% | 96% | 127ms |
+
+31 test cases, qwen3.5:2b filter model, fully local. $0/month.
 
 ---
 
@@ -50,7 +70,7 @@ The filter LLM never generates memory text. Out-of-range integers are silently i
 
 ## Benchmarks
 
-Measured 2026-03-28. 31 test cases, Anthropic claude-haiku-4-5 as filter model.
+Measured 2026-03-28. 31 test cases, qwen3.5:2b as filter model (local Ollama).
 
 | Mode | R@1 | hit@any | MRR | Latency |
 |---|---|---|---|---|
@@ -133,7 +153,7 @@ All endpoints return JSON. Server runs on port `19420` by default.
 ### `GET /health`
 
 ```json
-{"status": "ok", "count": 1484, "version": "0.1.0", "calibrated": true, "snapshot": true}
+{"status": "ok", "count": 1484, "version": "0.0.8", "calibrated": true, "snapshot": true}
 ```
 
 Fields: `count` = total memories in store; `calibrated` = vocab_map present; `snapshot` = snapshot.md exists.
@@ -270,7 +290,7 @@ All CLI commands talk to the running HTTP server.
 
 Priority: env vars > `.cogito.json` > defaults.
 
-Config file is searched at `./cogito.json` (cwd) then `~/.cogito/config.json`.
+Config file is searched at `./.cogito.json` (cwd) then `~/.cogito/config.json`.
 
 | Env var | Config key | Default | Description |
 |---|---|---|---|
@@ -371,13 +391,16 @@ Calibration builds a plain-English → technical term bridge. Example: "how fast
 
 ---
 
-## Related Tools
+## Built by Hermes Labs
 
-Both tools by [Hermes Labs](https://github.com/roli-lpci).
+cogito-ergo is part of the [Hermes Labs](https://hermes-labs.ai) AI agent tooling suite:
 
-**[zer0lint](https://github.com/roli-lpci/zer0lint)** — ingestion diagnostics for cogito-ergo stores. Run before benchmarking to verify store quality. Detects malformed extractions, duplicate facts, low-information entries, and coverage gaps. The technical extraction prompt in cogito's default config was validated against zer0lint.
-
-**[zer0dex](https://github.com/roli-lpci/zer0dex)** — the architecture pattern cogito-ergo implements. zer0dex defines the dual-layer retrieval pattern: compressed index (snapshot layer) + vector store with integer-pointer fidelity. cogito-ergo is the Python implementation of this pattern for agent memory.
+- **[zer0lint](https://github.com/roli-lpci/zer0lint)** — Memory extraction diagnostics. Run before benchmarking to verify store quality. The technical extraction prompt in cogito's default config was validated against zer0lint.
+- **[zer0dex](https://github.com/roli-lpci/zer0dex)** — Dual-layer memory architecture pattern that cogito-ergo implements.
+- **[lintlang](https://github.com/roli-lpci/lintlang)** — Static linter for AI agent tool descriptions and prompts
+- **[Little Canary](https://github.com/roli-lpci/little-canary)** — Prompt injection detection
+- **[Suy Sideguy](https://github.com/roli-lpci/suy-sideguy)** — Runtime policy enforcement for agents
+- **cogito-ergo** — Two-stage memory retrieval ← you are here
 
 ---
 

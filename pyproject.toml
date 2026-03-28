@@ -4,14 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cogito-ergo"
-version = "0.2.0"
-description = "A memory layer for AI agents — dual-layer retrieval with fidelity-guaranteed re-ranking"
+version = "0.0.8"
+description = "Two-stage memory retrieval for AI agents — integer-pointer fidelity guarantee, 85% R@1. By Hermes Labs."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
+authors = [
+  { name = "Hermes Labs", email = "roli@hermes-labs.ai" },
+]
 keywords = [
   "ai", "agents", "memory", "rag", "retrieval", "llm",
   "mem0", "agent", "zer0dex", "integer-pointer", "fidelity",
+  "vector-store", "chromadb", "ollama",
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
@@ -34,9 +38,10 @@ cogito = "cogito.cli:main"
 cogito-server = "cogito.server:main"
 
 [project.urls]
-Homepage = "https://github.com/roli-lpci/cogito-ergo"
+Homepage = "https://hermes-labs.ai"
 Repository = "https://github.com/roli-lpci/cogito-ergo"
-"Bug Tracker" = "https://github.com/roli-lpci/cogito-ergo/issues"
+Documentation = "https://github.com/roli-lpci/cogito-ergo#readme"
+Issues = "https://github.com/roli-lpci/cogito-ergo/issues"
 Changelog = "https://github.com/roli-lpci/cogito-ergo/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]

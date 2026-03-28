@@ -1,5 +1,5 @@
 # cogito-ergo
-> Two-stage memory retrieval for AI agents. Integer-pointer fidelity guarantee. 85% R@1, 96% hit@any (31 test cases, 2026-03-28). Local, $0/month for retrieval.
+> Two-stage memory retrieval for AI agents. Integer-pointer fidelity guarantee. 85% R@1, 96% hit@any (31 test cases, 2026-03-28). Local, $0/month for retrieval. By Hermes Labs.
 
 ## What it is
 
@@ -54,8 +54,8 @@ src/cogito/cli.py       — CLI: recall, query, add, store, seed, snapshot, cali
 
 port               default 19420          server port
 user_id            default "agent"        memory namespace
-filter_endpoint    required               OpenAI-compat base URL for filter LLM
-filter_token       required               bearer token for filter endpoint
+filter_endpoint    conditional            OpenAI-compat base URL for filter LLM (or set ANTHROPIC_API_KEY)
+filter_token       conditional            bearer token for filter endpoint (or set ANTHROPIC_API_KEY)
 filter_model       default claude-haiku-4-5  filter LLM model
 filter_timeout_ms  default 12000          filter LLM timeout
 anthropic_api_key  optional               direct Anthropic key (alternative to endpoint+token)
@@ -73,7 +73,7 @@ vocab_map          default {}             written by cogito calibrate
 
 cogito-server                        start server
 cogito recall "query"                two-stage recall
-cogito recall_b "query"              zero-LLM recall  (via /recall_b)
+# recall_b is HTTP-only (POST /recall_b), no CLI subcommand
 cogito query "query"                 simple vector query
 cogito add "text"                    add via extraction
 cogito seed <dir>                    bulk seed from files (--add for extraction mode)
@@ -105,9 +105,10 @@ Filter LLM (external) — any OpenAI-compatible endpoint or direct ANTHROPIC_API
 
 zer0lint (roli-lpci/zer0lint) — ingestion diagnostics; run before benchmarking
 zer0dex (roli-lpci/zer0dex) — architecture pattern cogito implements (dual-layer retrieval)
-Both by Hermes Labs.
+All by Hermes Labs (https://hermes-labs.ai).
 
 ## Install
 
 pip install cogito-ergo
 Python 3.10+. MIT license.
+Author: Hermes Labs (roli@hermes-labs.ai)
