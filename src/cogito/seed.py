@@ -116,17 +116,22 @@ def _curate(text: str, endpoint: str, token: str, model: str, timeout: float) ->
 
         # Strip thinking tokens
         if "<think>" in raw:
-            end = raw.rfind("</think>")
-            raw = raw[end + 8:].strip() if end >= 0 else raw
+            end_think = raw.rfind("</think>")
+            raw = raw[end_think + 8:].strip() if end_think >= 0 else raw
 
-        start = raw.find("[")
-        end = raw.rfind("]") + 1
-        if start < 0 or end <= start:
-            return []
-        facts = json.loads(raw[start:end])
-        if isinstance(facts, list):
-            return [f for f in facts if isinstance(f, str) and len(f.strip()) > 5]
-        return []
+        # Some models (qwen) emit one ["fact"] per line instead of a single array.
+        # Extract every [...] block and flatten.
+        import re
+        all_facts: list[str] = []
+        for m in re.finditer(r"\[([^\[\]]*)\]", raw):
+            try:
+                parsed = json.loads(m.group(0))
+                if isinstance(parsed, list):
+                    all_facts.extend(f for f in parsed if isinstance(f, str) and len(f.strip()) > 5)
+            except json.JSONDecodeError:
+                pass
+
+        return all_facts
     except Exception:
         return []
 
