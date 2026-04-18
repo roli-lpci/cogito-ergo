@@ -1,0 +1,36 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "date": "2026-04-18",
+  "test": "v33-ablate-no-temporal-boost",
+  "ablation": "no-temporal-boost",
+  "ablation_flags": {
+    "no_temporal_boost": true,
+    "no_socratic": false,
+    "no_verify_guard": false,
+    "no_flagship": false
+  },
+  "filter_model": "qwen-turbo",
+  "filter_top_k": 5,
+  "questions_evaluated": 3,
+  "stage1_r1": 1.0,
+  "stage1b_r1": 1.0,
+  "stage2_r1": 1.0,
+  "stage2_r5": 1.0,
+  "delta_vs_v33": 0.0489,
+  "qtype_breakdown": {
+    "single-session-user": {
+      "n": 3,
+      "r1": 1.0,
+      "delta_vs_v33": "+0.0%"
+    }
+  },
+  "filter_methods": {
+    "no_filter": 3
+  },
+  "temporal_boost_fired_count": 0,
+  "socratic_fired_count": 0,
+  "avg_retrieval_ms": 133,
+  "avg_filter_ms": 0,
+  "total_time_s": 0.4
+}

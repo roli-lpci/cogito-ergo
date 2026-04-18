@@ -1,0 +1,68 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "date": "2026-04-18",
+  "test": "combined_pipeline_v33",
+  "modifications": [
+    "temporal_boost_stage1",
+    "s8_socratic_scaffold_single"
+  ],
+  "engine": "BM25+turn-level+prefixes \u2192 temporal-boost \u2192 s8-socratic (qwen-turbo)",
+  "filter_model": "qwen-turbo",
+  "filter_top_k": 5,
+  "questions_evaluated": 20,
+  "stage1_metrics": {
+    "recall_any": {
+      "R@1": 0.95,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    }
+  },
+  "stage1b_metrics": {
+    "recall_any": {
+      "R@1": 0.95,
+      "R@5": 1.0
+    }
+  },
+  "stage2_metrics": {
+    "recall_any": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    },
+    "recall_all": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    },
+    "ndcg": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    }
+  },
+  "qtype_breakdown": {
+    "single-session-user": {
+      "n": 20,
+      "r1": 1.0,
+      "delta_vs_runc": "+0.0%"
+    }
+  },
+  "vs_runc_guard": 0.06,
+  "vs_mastra": 0.0513,
+  "temporal_boost_fired_count": 0,
+  "socratic_fired_count": 2,
+  "filter_methods": {
+    "default_s1": 17,
+    "flagship": 1,
+    "llm": 1,
+    "llm_guarded_s1": 1
+  },
+  "avg_retrieval_ms": 140,
+  "avg_filter_ms": 317,
+  "total_time_s": 9.2
+}

@@ -1,0 +1,95 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "date": "2026-04-18",
+  "test": "combined_pipeline_v33",
+  "modifications": [
+    "temporal_boost_stage1",
+    "s8_socratic_scaffold_single"
+  ],
+  "engine": "BM25+turn-level+prefixes \u2192 temporal-boost \u2192 s8-socratic (qwen-turbo)",
+  "filter_model": "qwen-turbo",
+  "filter_top_k": 5,
+  "questions_evaluated": 470,
+  "stage1_metrics": {
+    "recall_any": {
+      "R@1": 0.832,
+      "R@3": 0.951,
+      "R@5": 0.983,
+      "R@10": 0.991
+    }
+  },
+  "stage1b_metrics": {
+    "recall_any": {
+      "R@1": 0.832,
+      "R@5": 0.983
+    }
+  },
+  "stage2_metrics": {
+    "recall_any": {
+      "R@1": 0.951,
+      "R@3": 0.977,
+      "R@5": 0.983,
+      "R@10": 0.991
+    },
+    "recall_all": {
+      "R@1": 0.34,
+      "R@3": 0.791,
+      "R@5": 0.851,
+      "R@10": 0.938
+    },
+    "ndcg": {
+      "R@1": 0.951,
+      "R@3": 0.908,
+      "R@5": 0.912,
+      "R@10": 0.928
+    }
+  },
+  "qtype_breakdown": {
+    "knowledge-update": {
+      "n": 72,
+      "r1": 0.972,
+      "delta_vs_runc": "+0.0%"
+    },
+    "multi-session": {
+      "n": 121,
+      "r1": 0.983,
+      "delta_vs_runc": "+0.0%"
+    },
+    "single-session-assistant": {
+      "n": 56,
+      "r1": 1.0,
+      "delta_vs_runc": "+1.8%"
+    },
+    "single-session-preference": {
+      "n": 30,
+      "r1": 0.867,
+      "delta_vs_runc": "+0.0%"
+    },
+    "single-session-user": {
+      "n": 64,
+      "r1": 1.0,
+      "delta_vs_runc": "+0.0%"
+    },
+    "temporal-reasoning": {
+      "n": 127,
+      "r1": 0.882,
+      "delta_vs_runc": "+3.1%"
+    }
+  },
+  "vs_runc_guard": 0.0111,
+  "vs_mastra": 0.0024,
+  "temporal_boost_fired_count": 90,
+  "socratic_fired_count": 199,
+  "filter_methods": {
+    "default_s1": 193,
+    "flagship": 31,
+    "llm": 174,
+    "llm_guarded_s1": 25,
+    "flagship_llm": 6,
+    "skip": 41
+  },
+  "avg_retrieval_ms": 146,
+  "avg_filter_ms": 886,
+  "total_time_s": 485.0
+}

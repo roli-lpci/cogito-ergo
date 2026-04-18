@@ -1,13 +1,11 @@
 """
-Full pipeline: Combined retrieval (BM25 + turn-level + prefixes) + LLM filter.
+v33 Ablation Script — identical to v33 but with 4 CLI flags to disable components:
+  --no-temporal-boost   : disable temporal boost at Stage 1
+  --no-socratic         : replace s8-socratic with baseline filter prompt
+  --no-verify-guard     : disable verify-guard (don't restore S1 top-1)
+  --no-flagship         : disable qwen-max escalation (use qwen-turbo only)
 
-Stage 1: BM25 + turn-level chunking + nomic prefixes (same as longmemeval_combined.py)
-  → R@1=83.2%, R@5=98.3% zero-LLM
-
-Stage 2: LLM reranking of top-5 sessions via gemma3:4b
-  → Hypothesis: reranking the 15% of cases where answer is at positions 2-5
-
-Graceful fallback: if filter fails, keep Stage 1 order (never regress).
+Used for ablation runs K/L/M/N to attribute the +1.11pp lift.
 """
 
 import argparse
@@ -17,6 +15,7 @@ import re
 import sys
 import time
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 
 import os
@@ -79,6 +78,10 @@ QUERY_PREFIX = "search_query: "
 DOC_PREFIX = "search_document: "
 GAP_THRESHOLD = 0.1  # score gap: top1 - top2. Above = confident, skip LLM.
 
+# Temporal boost strength (multiplier on blended score when signal matches)
+TEMPORAL_BOOST_MAX = 1.5
+TEMPORAL_BOOST_LIGHT = 1.15  # light recency: fallback when no specific direction
+
 # ---------------------------------------------------------------------------
 # Router: classify query → route decision
 # ---------------------------------------------------------------------------
@@ -106,6 +109,9 @@ _COUNTING_PATTERNS = [
     "in total", "altogether", "combined",
 ]
 
+_RECENCY_SIGNALS = ["recent", "lately", "now", "current", "just", "latest", "newest"]
+_EARLIEST_SIGNALS = ["first", "originally", "earliest", "oldest", "beginning", "started", "initial"]
+
 
 def classify_query(query: str) -> str:
     """Classify query for routing. Returns 'skip', 'llm', or 'gap'."""
@@ -117,6 +123,105 @@ def classify_query(query: str) -> str:
     if any(p in q for p in _COUNTING_PATTERNS):
         return "llm"
     return "gap"
+
+
+# ---------------------------------------------------------------------------
+# Temporal boost helpers
+# ---------------------------------------------------------------------------
+def _parse_date(date_str: str) -> datetime | None:
+    """Parse 'YYYY/MM/DD (Day) HH:MM' format."""
+    if not date_str:
+        return None
+    try:
+        parts = date_str.split(" ")
+        return datetime.strptime(parts[0], "%Y/%m/%d")
+    except (ValueError, IndexError):
+        return None
+
+
+def _extract_explicit_year_month(query: str) -> tuple[int | None, int | None]:
+    """Extract explicit year and month from query text."""
+    year = None
+    month = None
+    m = re.search(r'\b(202[0-9])\b', query)
+    if m:
+        year = int(m.group(1))
+    month_map = {
+        "january": 1, "february": 2, "march": 3, "april": 4,
+        "may": 5, "june": 6, "july": 7, "august": 8,
+        "september": 9, "october": 10, "november": 11, "december": 12,
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+        "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+    }
+    ql = query.lower()
+    for name, num in month_map.items():
+        if name in ql:
+            month = num
+            break
+    return year, month
+
+
+def temporal_boost_score(
+    session_id: str,
+    query: str,
+    haystack_dates: list[str],
+    haystack_session_ids: list[str],
+    question_date: str = "",
+) -> float:
+    """Returns a multiplier 1.0-1.5 to apply to a session's blended score."""
+    sid_to_date: dict[str, datetime | None] = {}
+    for sid, ds in zip(haystack_session_ids, haystack_dates):
+        sid_to_date[sid] = _parse_date(ds)
+
+    session_dt = sid_to_date.get(session_id)
+    if session_dt is None:
+        return 1.0
+
+    all_dated: list[tuple[str, datetime]] = [
+        (sid, dt) for sid, dt in sid_to_date.items() if dt is not None
+    ]
+    if not all_dated:
+        return 1.0
+
+    all_dated.sort(key=lambda x: x[1])
+    n_total = len(all_dated)
+
+    session_rank = next(
+        (i for i, (sid, _) in enumerate(all_dated) if sid == session_id), 0
+    )
+
+    ql = query.lower()
+
+    year_q, month_q = _extract_explicit_year_month(ql)
+    if year_q or month_q:
+        match = True
+        if year_q and session_dt.year != year_q:
+            match = False
+        if month_q and session_dt.month != month_q:
+            match = False
+        if match:
+            return TEMPORAL_BOOST_MAX
+        else:
+            return 1.0
+
+    if any(sig in ql for sig in _RECENCY_SIGNALS):
+        recency_rank = session_rank / max(n_total - 1, 1)
+        boost = 1.0 + (TEMPORAL_BOOST_MAX - 1.0) * math.log1p(recency_rank * (math.e - 1))
+        return round(boost, 4)
+
+    if any(sig in ql for sig in _EARLIEST_SIGNALS):
+        oldest_rank = 1.0 - (session_rank / max(n_total - 1, 1))
+        boost = 1.0 + (TEMPORAL_BOOST_MAX - 1.0) * math.log1p(oldest_rank * (math.e - 1))
+        return round(boost, 4)
+
+    recency_rank = session_rank / max(n_total - 1, 1)
+    boost = 1.0 + (TEMPORAL_BOOST_LIGHT - 1.0) * recency_rank
+    return round(boost, 4)
+
+
+# ---------------------------------------------------------------------------
+# s8-socratic scaffold (default filter for v33)
+# ---------------------------------------------------------------------------
 
 _FILTER_SYSTEM = (
     "Execute this procedure:\n"
@@ -133,9 +238,161 @@ _FILTER_SYSTEM = (
     "Example: [3, 1, 5, 2, 4]"
 )
 
+# s8-socratic scaffold prompt prefix
+_S8_SOCRATIC_PREFIX = (
+    "Step 1: classify query type (temporal, preference, factual, etc.).\n"
+    "Step 2: identify the best candidate session that answers the query.\n"
+    "Step 3: verify your choice with specific evidence from that candidate.\n"
+    "Return the index of the best candidate as a JSON array (best first).\n\n"
+)
+
+# Baseline filter prompt (no socratic prefix) — for --no-socratic ablation
+_BASELINE_PREFIX = ""
+
+
+def _parse_filter_indices(raw: str, n_candidates: int) -> list[int] | None:
+    """Parse LLM output to list of 0-based indices."""
+    if "<think>" in raw:
+        end = raw.rfind("</think>")
+        if end >= 0:
+            after = raw[end + 8:].strip()
+            if after:
+                raw = after
+
+    start = raw.find("[")
+    end = raw.rfind("]") + 1
+    if start < 0 or end <= start:
+        return None
+    try:
+        arr = json.loads(raw[start:end])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(arr, list):
+        return None
+
+    result = []
+    for item in arr:
+        try:
+            idx = int(item)
+        except (ValueError, TypeError):
+            continue
+        if 1 <= idx <= n_candidates and (idx - 1) not in result:
+            result.append(idx - 1)  # 1-based → 0-based
+    return result if result else None
+
+
+def _llm_call_single(system_prompt: str, user_prompt: str, max_tokens: int = 150) -> str | None:
+    """Single LLM call to qwen-turbo. Returns raw response string or None on error."""
+    model = FILTER_MODEL
+    try:
+        body = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0,
+            "max_tokens": max_tokens,
+        }).encode()
+        req = urllib.request.Request(
+            DASHSCOPE_URL, data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return raw
+    except Exception as e:
+        print(f"  [llm_call error] {e}", file=sys.stderr)
+        return None
+
+
+def llm_rerank_with_prefix(
+    query: str,
+    top_sessions: list[tuple[int, str]],
+    prefix: str,
+    scaffold_name: str,
+) -> tuple[list[int], str, dict]:
+    """
+    Apply filter with given prefix. Used for both s8-socratic and baseline.
+    Returns (reranked_corpus_indices, method, meta_info).
+    """
+    n = len(top_sessions)
+    if n == 0:
+        return [], "empty", {}
+
+    candidates_block = "\n".join(
+        f"[{i+1}] {text[:500].replace(chr(10), ' ')}"
+        for i, (_, text) in enumerate(top_sessions)
+    )
+    prompt = (
+        f"{prefix}"
+        f"Query: {query}\n\n"
+        f"Candidate memories:\n{candidates_block}\n\n"
+        f"Rank these {n} candidates by relevance. Output JSON array."
+    )
+    raw = _llm_call_single(_FILTER_SYSTEM, prompt, max_tokens=200)
+    parsed = _parse_filter_indices(raw or "", n) if raw else None
+    if not parsed:
+        return [idx for idx, _ in top_sessions], "parse_fail", {"scaffold": scaffold_name}
+
+    reranked = [top_sessions[i][0] for i in parsed]
+    included = set(parsed)
+    for i in range(n):
+        if i not in included:
+            reranked.append(top_sessions[i][0])
+    return reranked, f"filter_{scaffold_name}", {"scaffold": scaffold_name}
+
+
+def llm_rerank_flagship_meta(
+    query: str,
+    top_sessions: list[tuple[int, str]],
+) -> tuple[list[int], str]:
+    """Flagship path — delegate to flagship_rerank."""
+    return flagship_rerank(query, top_sessions)
+
 
 # ---------------------------------------------------------------------------
-# Chunking (from longmemeval_combined.py)
+# Verify guard
+# ---------------------------------------------------------------------------
+_VERIFY_SYSTEM = (
+    "Execute this procedure:\n"
+    "```\n"
+    "def verify(query, candidate):\n"
+    "  facts = extract_facts(candidate)\n"
+    "  answer_present = any(fact answers query for fact in facts)\n"
+    "  return 'YES' if answer_present else 'NO'\n"
+    "```\n"
+    "Input: a query and a candidate memory.\n"
+    "Output: ONLY 'YES' or 'NO'. Nothing else."
+)
+
+
+def llm_verify_one(query: str, candidate_text: str, snippet_len: int = 1500) -> str | None:
+    """Single-candidate verify. Returns 'YES', 'NO', or None on error."""
+    snippet = candidate_text[:snippet_len].replace("\n", " ")
+    prompt_user = (
+        f"Query: {query}\n\n"
+        f"Candidate memory:\n{snippet}\n\n"
+        "Does this memory contain the specific fact that answers the query?"
+    )
+    raw = _llm_call_single(_VERIFY_SYSTEM, prompt_user, max_tokens=10)
+    if raw is None:
+        return None
+    raw = raw.strip().upper()
+    if "YES" in raw:
+        return "YES"
+    if "NO" in raw:
+        return "NO"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Chunking
 # ---------------------------------------------------------------------------
 def chunk_session(session: list[dict], session_id: str) -> list[tuple[str, str]]:
     chunks = []
@@ -264,7 +521,7 @@ def build_subqueries(query: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
-# Stage 1: Combined retrieval (BM25 + dense + turn-level + prefixes)
+# Stage 1: Combined retrieval
 # ---------------------------------------------------------------------------
 def retrieve_chunks(
     query: str,
@@ -277,7 +534,7 @@ def retrieve_chunks(
     if sq_vecs is None:
         sq_vecs = batch_embed_queries([query])
         if sq_vecs is None:
-            return list(range(len(chunk_texts)))
+            return list(range(len(chunk_texts))), [0.0] * len(chunk_texts)
 
     k_bm25 = min(20, len(chunk_texts))
     runs: list[list[tuple[int, float]]] = []
@@ -324,219 +581,31 @@ def retrieve_chunks(
     return ranked_ids, ranked_scores
 
 
-# ---------------------------------------------------------------------------
-# Stage 2: LLM filter (rerank top-5 sessions)
-# ---------------------------------------------------------------------------
-def _parse_filter_indices(raw: str, n_candidates: int) -> list[int] | None:
-    """Parse LLM output to list of 0-based indices."""
-    # Strip thinking tokens if present
-    if "<think>" in raw:
-        end = raw.rfind("</think>")
-        if end >= 0:
-            after = raw[end + 8:].strip()
-            if after:
-                raw = after
-
-    start = raw.find("[")
-    end = raw.rfind("]") + 1
-    if start < 0 or end <= start:
-        return None
-    try:
-        arr = json.loads(raw[start:end])
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(arr, list):
-        return None
-
-    result = []
-    for item in arr:
-        try:
-            idx = int(item)
-        except (ValueError, TypeError):
-            continue
-        if 1 <= idx <= n_candidates and (idx - 1) not in result:
-            result.append(idx - 1)  # 1-based → 0-based
-    return result if result else None
-
-
-def llm_rerank(
+def apply_temporal_boost_to_sessions(
+    ranked_sessions: list[int],
+    session_scores: dict[int, float],
+    corpus_ids: list[str],
     query: str,
-    top_sessions: list[tuple[int, str]],  # [(corpus_idx, session_text), ...]
-    temporal_scaffold: str = "",
-) -> tuple[list[int], str]:
-    """
-    Rerank top sessions via LLM. Returns (reranked_corpus_indices, method).
-    On any failure, returns original order (graceful fallback).
-    """
-    n = len(top_sessions)
-    if n <= 1:
-        return [idx for idx, _ in top_sessions], "filter_skip"
+    haystack_dates: list[str],
+    haystack_session_ids: list[str],
+    question_date: str = "",
+) -> tuple[list[int], int]:
+    """Apply temporal boost to session-level scores."""
+    boost_fired = 0
+    boosted_scores: list[tuple[int, float]] = []
 
-    # Build numbered candidate block
-    lines = []
-    for i, (corpus_idx, text) in enumerate(top_sessions):
-        snippet = text[:500].replace("\n", " ")
-        lines.append(f"[{i+1}] {snippet}")
-    candidates_block = "\n".join(lines)
-
-    # Build prompt with optional temporal scaffold
-    prompt_parts = [f"Query: {query}"]
-    if temporal_scaffold:
-        prompt_parts.append(f"\n{temporal_scaffold}")
-    prompt_parts.append(f"\nCandidate memories:\n{candidates_block}")
-    prompt_parts.append(f"\nRank these {n} candidates by relevance. Output JSON array.")
-    prompt_user = "\n".join(prompt_parts)
-
-    try:
-        body = json.dumps({
-            "model": FILTER_MODEL,
-            "messages": [
-                {"role": "system", "content": _FILTER_SYSTEM},
-                {"role": "user", "content": prompt_user},
-            ],
-            "temperature": 0,
-            "max_tokens": 100,
-        }).encode()
-        req = urllib.request.Request(
-            DASHSCOPE_URL, data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
-            },
-            method="POST",
+    for corpus_idx in ranked_sessions:
+        sid = corpus_ids[corpus_idx]
+        base_score = session_scores.get(corpus_idx, 0.0)
+        multiplier = temporal_boost_score(
+            sid, query, haystack_dates, haystack_session_ids, question_date
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read())
-        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-    except Exception as e:
-        print(f"  [filter error] {e}", file=sys.stderr)
-        return [idx for idx, _ in top_sessions], "fallback_error"
+        if multiplier > 1.0:
+            boost_fired += 1
+        boosted_scores.append((corpus_idx, base_score * multiplier))
 
-    if not raw.strip():
-        return [idx for idx, _ in top_sessions], "fallback_empty"
-
-    parsed = _parse_filter_indices(raw, n)
-    if parsed is None:
-        return [idx for idx, _ in top_sessions], "fallback_parse"
-
-    # Build reranked list from parsed indices
-    reranked = [top_sessions[i][0] for i in parsed]
-    # Append any candidates the LLM didn't include
-    included = set(parsed)
-    for i in range(n):
-        if i not in included:
-            reranked.append(top_sessions[i][0])
-
-    return reranked, "filter"
-
-
-_VERIFY_SYSTEM = (
-    "Execute this procedure:\n"
-    "```\n"
-    "def verify(query, candidate):\n"
-    "  facts = extract_facts(candidate)\n"
-    "  answer_present = any(fact answers query for fact in facts)\n"
-    "  return 'YES' if answer_present else 'NO'\n"
-    "```\n"
-    "Input: a query and a candidate memory.\n"
-    "Output: ONLY 'YES' or 'NO'. Nothing else."
-)
-
-
-def llm_verify_one(query: str, candidate_text: str, snippet_len: int = 1500) -> str | None:
-    """
-    Single-candidate verify. Returns 'YES', 'NO', or None on error.
-    Used as a guard to prevent the LLM rerank from demoting a correct S1 top-1.
-    """
-    snippet = candidate_text[:snippet_len].replace("\n", " ")
-    prompt_user = (
-        f"Query: {query}\n\n"
-        f"Candidate memory:\n{snippet}\n\n"
-        "Does this memory contain the specific fact that answers the query?"
-    )
-    try:
-        body = json.dumps({
-            "model": FILTER_MODEL,
-            "messages": [
-                {"role": "system", "content": _VERIFY_SYSTEM},
-                {"role": "user", "content": prompt_user},
-            ],
-            "temperature": 0,
-            "max_tokens": 10,
-        }).encode()
-        req = urllib.request.Request(
-            DASHSCOPE_URL, data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        raw = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip().upper()
-    except Exception:
-        return None
-    if "YES" in raw:
-        return "YES"
-    if "NO" in raw:
-        return "NO"
-    return None
-
-
-def llm_verify(
-    query: str,
-    top_sessions: list[tuple[int, str]],
-) -> tuple[list[int], str]:
-    """
-    Verify top candidate. If #1 doesn't answer the query, find the first that does.
-    Falls back to original order on failure.
-    """
-    if len(top_sessions) <= 1:
-        return [idx for idx, _ in top_sessions], "verify_skip"
-
-    for check_i, (corpus_idx, text) in enumerate(top_sessions[:5]):
-        snippet = text[:500].replace("\n", " ")
-        prompt_user = f"Query: {query}\n\nCandidate memory:\n{snippet}\n\nDoes this memory answer the query?"
-
-        try:
-            body = json.dumps({
-                "model": FILTER_MODEL,
-                "messages": [
-                    {"role": "system", "content": _VERIFY_SYSTEM},
-                    {"role": "user", "content": prompt_user},
-                ],
-                "temperature": 0,
-                "max_tokens": 10,
-            }).encode()
-            req = urllib.request.Request(
-                DASHSCOPE_URL, data=body,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {DASHSCOPE_API_KEY}",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                data = json.loads(resp.read())
-            raw = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip().upper()
-        except Exception as e:
-            print(f"  [verify error] {e}", file=sys.stderr)
-            return [idx for idx, _ in top_sessions], "verify_fallback"
-
-        if "YES" in raw:
-            # Found the answer — promote this candidate to rank 1
-            if check_i == 0:
-                return [idx for idx, _ in top_sessions], "verify_kept"
-            else:
-                reordered = [top_sessions[check_i][0]]
-                for j, (idx2, _) in enumerate(top_sessions):
-                    if j != check_i:
-                        reordered.append(idx2)
-                return reordered, f"verify_swap_{check_i+1}"
-
-    # None verified — keep original order
-    return [idx for idx, _ in top_sessions], "verify_none"
+    boosted_scores.sort(key=lambda x: x[1], reverse=True)
+    return [idx for idx, _ in boosted_scores], boost_fired
 
 
 # ---------------------------------------------------------------------------
@@ -574,12 +643,40 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--split", choices=["s", "m"], default="s")
     parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--data_dir", default=str(Path(__file__).resolve().parent.parent.parent / "LongMemEval" / "data"))
+    parser.add_argument("--data_dir", default="/Users/rbr_lpci/Documents/projects/LongMemEval/data")
     parser.add_argument("--no-filter", action="store_true", help="Skip LLM filter (Stage 1 only)")
-    parser.add_argument("--verify", action="store_true", help="Use verify mode: only check if #1 is correct, swap if not")
-    parser.add_argument("--run-id", default=None, help="Run ID for per-question logging (default: auto timestamp)")
-    parser.add_argument("--resume", action="store_true", help="Resume from existing per_question.json (skip done qids)")
+    parser.add_argument("--run-id", default=None, help="Run ID for per-question logging")
+    parser.add_argument("--resume", action="store_true", help="Resume from existing per_question.json")
+    # Ablation flags
+    parser.add_argument("--no-temporal-boost", action="store_true",
+                        help="ABLATION: disable temporal boost at Stage 1")
+    parser.add_argument("--no-socratic", action="store_true",
+                        help="ABLATION: use baseline filter prompt instead of s8-socratic")
+    parser.add_argument("--no-verify-guard", action="store_true",
+                        help="ABLATION: disable verify-guard (don't restore S1 top-1)")
+    parser.add_argument("--no-flagship", action="store_true",
+                        help="ABLATION: disable qwen-max escalation (use qwen-turbo only)")
     args = parser.parse_args()
+
+    # Determine scaffold prefix
+    if args.no_socratic:
+        scaffold_prefix = _BASELINE_PREFIX
+        scaffold_label = "baseline"
+    else:
+        scaffold_prefix = _S8_SOCRATIC_PREFIX
+        scaffold_label = "s8-socratic"
+
+    # Build ablation description
+    ablation_parts = []
+    if args.no_temporal_boost:
+        ablation_parts.append("no-temporal-boost")
+    if args.no_socratic:
+        ablation_parts.append("no-socratic")
+    if args.no_verify_guard:
+        ablation_parts.append("no-verify-guard")
+    if args.no_flagship:
+        ablation_parts.append("no-flagship")
+    ablation_desc = "+".join(ablation_parts) if ablation_parts else "full-v33"
 
     split_file = f"longmemeval_{args.split}_cleaned.json"
     data_path = Path(args.data_dir) / split_file
@@ -587,8 +684,11 @@ def main():
         print(f"Data file not found: {data_path}")
         sys.exit(1)
 
-    mode = "Stage 1 only (no filter)" if args.no_filter else f"Stage 1 + LLM filter ({FILTER_MODEL})"
-    print(f"COMBINED PIPELINE: {mode}")
+    print(f"COMBINED PIPELINE v33-ABLATE: ablation={ablation_desc}")
+    print(f"  temporal-boost: {'OFF' if args.no_temporal_boost else 'ON'}")
+    print(f"  scaffold: {'baseline' if args.no_socratic else 's8-socratic'}")
+    print(f"  verify-guard: {'OFF' if args.no_verify_guard else 'ON'}")
+    print(f"  flagship: {'OFF (qwen-turbo only)' if args.no_flagship else 'ON (qwen-max for hardset)'}")
     print(f"Loading {data_path.name}...")
     data = json.load(open(data_path))
     data = [e for e in data if "_abs" not in e["question_id"]]
@@ -596,21 +696,25 @@ def main():
         data = data[:args.limit]
     print(f"[pipeline] Running on {len(data)} questions")
 
-    # Setup run directory for per-question logging
+    # Setup run directory
     run_id = args.run_id or time.strftime("%Y%m%d-%H%M%S")
     run_dir = Path(__file__).parent / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"[pipeline] Run ID: {run_id} → {run_dir}")
 
-    # Metrics for both stages
+    # Metrics
     s1_metrics = {k: {"recall_any": [], "recall_all": [], "ndcg": []} for k in [1, 3, 5, 10]}
+    s1b_metrics = {k: {"recall_any": [], "recall_all": [], "ndcg": []} for k in [1, 3, 5, 10]}
     s2_metrics = {k: {"recall_any": [], "recall_all": [], "ndcg": []} for k in [1, 3, 5, 10]}
     total_retrieval_time = 0.0
     total_filter_time = 0.0
     filter_methods: dict[str, int] = {}
     per_question_log: list[dict] = []
 
-    # Resume support: load existing per_question.json and skip done qids
+    temporal_boost_fired_count = 0
+    socratic_fired_count = 0
+
+    # Resume support
     done_qids: set[str] = set()
     pq_path = run_dir / "per_question.json"
     if args.resume and pq_path.exists():
@@ -619,13 +723,21 @@ def main():
         done_qids = {e["qid"] for e in existing}
         for e in existing:
             filter_methods[e["route_decision"]] = filter_methods.get(e["route_decision"], 0) + 1
+            if e.get("temporal_boost_fired"):
+                temporal_boost_fired_count += 1
+            if e.get("scaffold") == scaffold_label:
+                socratic_fired_count += 1
         print(f"[resume] Loaded {len(done_qids)} completed questions, skipping them.")
 
     for qi, entry in enumerate(data):
         if entry["question_id"] in done_qids:
-            continue  # already completed in prior run
+            continue
+
         question = entry["question"]
         answer_sids = set(entry["answer_session_ids"])
+        qtype = entry.get("question_type", "unknown")
+        question_date = entry.get("question_date", "")
+        haystack_dates = entry.get("haystack_dates", [])
 
         # --- Build session corpus ---
         corpus_texts: list[str] = []
@@ -683,16 +795,45 @@ def main():
 
         ranked_sessions = dedup_to_sessions(ranked_chunk_indices, chunk_session_ids, session_id_to_corpus_idx)
 
-        # Score Stage 1
+        # Score Stage 1 (before temporal boost)
         for k in [1, 3, 5, 10]:
             r_any, r_all = evaluate_retrieval(ranked_sessions, correct_indices, k)
-            n = ndcg_score(ranked_sessions, set(correct_indices), n_sessions, k)
+            n_val = ndcg_score(ranked_sessions, set(correct_indices), n_sessions, k)
             s1_metrics[k]["recall_any"].append(r_any)
             s1_metrics[k]["recall_all"].append(r_all)
-            s1_metrics[k]["ndcg"].append(n)
+            s1_metrics[k]["ndcg"].append(n_val)
+
+        # --- Temporal boost at Stage 1 (ablatable) ---
+        boost_fired_this_q = 0
+        if not args.no_temporal_boost and is_temporal_query(question) and haystack_dates:
+            session_scores: dict[int, float] = {
+                corpus_idx: 1.0 / (rank + 1) for rank, corpus_idx in enumerate(ranked_sessions)
+            }
+            ranked_sessions_boosted, boost_fired_this_q = apply_temporal_boost_to_sessions(
+                ranked_sessions,
+                session_scores,
+                corpus_ids,
+                question,
+                haystack_dates,
+                entry["haystack_session_ids"],
+                question_date,
+            )
+            ranked_sessions = ranked_sessions_boosted
+            if boost_fired_this_q > 0:
+                temporal_boost_fired_count += 1
+
+        # Score Stage 1b (after temporal boost / no-op if disabled)
+        for k in [1, 3, 5, 10]:
+            r_any, r_all = evaluate_retrieval(ranked_sessions, correct_indices, k)
+            n_val = ndcg_score(ranked_sessions, set(correct_indices), n_sessions, k)
+            s1b_metrics[k]["recall_any"].append(r_any)
+            s1b_metrics[k]["recall_all"].append(r_all)
+            s1b_metrics[k]["ndcg"].append(n_val)
 
         # --- Stage 2: Routed LLM filter ---
         filter_elapsed = 0.0
+        scaffold_used: str | None = None
+
         if args.no_filter:
             final_ranking = ranked_sessions
             route_decision = "no_filter"
@@ -700,68 +841,62 @@ def main():
             route = classify_query(question)
 
             if route == "skip":
-                # Assistant-reference queries: LLM hurts, keep S1
                 final_ranking = ranked_sessions
                 route_decision = "skip"
             elif route == "llm":
-                # Temporal/counting: LLM helps, always call
                 top_k = min(FILTER_TOP_K, len(ranked_sessions))
                 top_sessions = [(idx, corpus_texts[idx]) for idx in ranked_sessions[:top_k]]
 
-                # Build temporal scaffold for temporal queries
-                scaffold = ""
-                if is_temporal_query(question):
-                    haystack_dates = entry.get("haystack_dates", [])
-                    sid_to_date = {}
-                    for sid_d, date_d in zip(entry["haystack_session_ids"], haystack_dates):
-                        sid_to_date[sid_d] = date_d
-                    top_sids = [corpus_ids[idx] for idx in ranked_sessions[:top_k]]
-                    scaffold = build_temporal_scaffold(
-                        list(range(1, top_k + 1)), top_sids, sid_to_date
-                    )
-
                 t1 = time.time()
                 qid = entry["question_id"]
-                if qid in HARDSET_QIDS:
-                    # Escalate hardset LLM questions to flagship (no temporal scaffold — Run A showed it hurts)
+
+                # Flagship path (ablatable)
+                if not args.no_flagship and qid in HARDSET_QIDS:
                     top_sessions_full = [(idx, corpus_texts[idx]) for idx in ranked_sessions[:top_k]]
-                    reranked_top, method = flagship_rerank(question, top_sessions_full)
+                    reranked_top, method = llm_rerank_flagship_meta(question, top_sessions_full)
                     route_decision = "flagship_llm"
                 else:
-                    reranked_top, method = llm_rerank(question, top_sessions)
+                    # Apply filter with selected scaffold (socratic or baseline)
+                    reranked_top, method, meta_info = llm_rerank_with_prefix(
+                        question,
+                        top_sessions,
+                        scaffold_prefix,
+                        scaffold_label,
+                    )
                     route_decision = "llm"
-                    # GUARD: if rerank moved a NEW candidate to top-1, verify S1's top-1
-                    # If S1's top-1 answers the query, keep S1 (prevents filter demotion).
-                    s1_top1_idx = ranked_sessions[0]
-                    if reranked_top and reranked_top[0] != s1_top1_idx:
-                        s1_top1_text = corpus_texts[s1_top1_idx]
-                        verdict = llm_verify_one(question, s1_top1_text)
-                        if verdict == "YES":
-                            # S1 top-1 answers the query — restore it to rank 1, push reranked's top-1 to rank 2
-                            new_order = [s1_top1_idx]
-                            for idx in reranked_top:
-                                if idx != s1_top1_idx:
-                                    new_order.append(idx)
-                            # Include any S1 top-k candidates the rerank dropped
-                            included = set(new_order)
-                            for idx in ranked_sessions[:top_k]:
-                                if idx not in included:
-                                    new_order.append(idx)
-                            reranked_top = new_order
-                            route_decision = "llm_guarded_s1"
+                    scaffold_used = meta_info.get("scaffold")
+                    if scaffold_used == scaffold_label:
+                        socratic_fired_count += 1
+
+                    # GUARD: restore S1 top-1 if demoted (ablatable)
+                    if not args.no_verify_guard:
+                        s1_top1_idx = ranked_sessions[0]
+                        if reranked_top and reranked_top[0] != s1_top1_idx:
+                            s1_top1_text = corpus_texts[s1_top1_idx]
+                            verdict = llm_verify_one(question, s1_top1_text)
+                            if verdict == "YES":
+                                new_order = [s1_top1_idx]
+                                for idx in reranked_top:
+                                    if idx != s1_top1_idx:
+                                        new_order.append(idx)
+                                included = set(new_order)
+                                for idx in ranked_sessions[:top_k]:
+                                    if idx not in included:
+                                        new_order.append(idx)
+                                reranked_top = new_order
+                                route_decision = "llm_guarded_s1"
+
                 filter_elapsed = time.time() - t1
                 total_filter_time += filter_elapsed
                 final_ranking = reranked_top + ranked_sessions[top_k:]
             else:
-                # Default: keep S1 unless this is a hardset question → escalate to flagship
+                # Default / gap: escalate hardset to flagship (ablatable), else keep S1
                 qid = entry["question_id"]
-                if qid in HARDSET_QIDS:
-                    # Flagship escalation: qwen-max with 2000-char snippets, no temporal scaffold
+                if not args.no_flagship and qid in HARDSET_QIDS:
                     top_k = min(FILTER_TOP_K, len(ranked_sessions))
                     top_sessions_full = [(idx, corpus_texts[idx]) for idx in ranked_sessions[:top_k]]
-
                     t1 = time.time()
-                    reranked_top, method = flagship_rerank(question, top_sessions_full)
+                    reranked_top, method = llm_rerank_flagship_meta(question, top_sessions_full)
                     filter_elapsed = time.time() - t1
                     total_filter_time += filter_elapsed
                     final_ranking = reranked_top + ranked_sessions[top_k:]
@@ -783,7 +918,7 @@ def main():
         pq_entry = {
             "qi": qi,
             "qid": entry["question_id"],
-            "qtype": entry.get("question_type", "unknown"),
+            "qtype": qtype,
             "question": question,
             "gold_session_ids": list(answer_sids),
             "n_gold": len(answer_sids),
@@ -795,12 +930,16 @@ def main():
             "s1_hit_at_5": s1_hit5,
             "s2_hit_at_5": s2_hit5,
             "route_decision": route_decision,
-            "filter_called": route_decision in ("llm", "gap_to_llm"),
-            "filter_ms": round(filter_elapsed * 1000) if route_decision in ("llm", "gap_to_llm") else 0,
+            "filter_called": route_decision in ("llm", "llm_guarded_s1", "gap_to_llm"),
+            "filter_ms": round(filter_elapsed * 1000) if route_decision in ("llm", "llm_guarded_s1", "gap_to_llm") else 0,
+            "temporal_boost_fired": boost_fired_this_q > 0,
+            "temporal_boost_count": boost_fired_this_q,
+            "scaffold": scaffold_used,
+            "ablation": ablation_desc,
         }
         per_question_log.append(pq_entry)
 
-        # Write incrementally so we can monitor progress
+        # Write incrementally
         pq_path = run_dir / "per_question.json"
         with open(pq_path, "w") as f:
             json.dump(per_question_log, f)
@@ -808,129 +947,117 @@ def main():
         # Score Stage 2
         for k in [1, 3, 5, 10]:
             r_any, r_all = evaluate_retrieval(final_ranking, correct_indices, k)
-            n = ndcg_score(final_ranking, set(correct_indices), n_sessions, k)
+            n_val = ndcg_score(final_ranking, set(correct_indices), n_sessions, k)
             s2_metrics[k]["recall_any"].append(r_any)
             s2_metrics[k]["recall_all"].append(r_all)
-            s2_metrics[k]["ndcg"].append(n)
+            s2_metrics[k]["ndcg"].append(n_val)
 
-        # Progress
-        if (qi + 1) % 10 == 0 or qi == 0:
+        # Progress every 30 questions
+        if (qi + 1) % 30 == 0 or qi == 0:
             s1_r1 = sum(s1_metrics[1]["recall_any"]) / len(s1_metrics[1]["recall_any"]) if s1_metrics[1]["recall_any"] else 0.0
             s2_r1 = sum(s2_metrics[1]["recall_any"]) / len(s2_metrics[1]["recall_any"]) if s2_metrics[1]["recall_any"] else 0.0
             s2_r5 = sum(s2_metrics[5]["recall_any"]) / len(s2_metrics[5]["recall_any"]) if s2_metrics[5]["recall_any"] else 0.0
-            filt_avg = (total_filter_time / (qi + 1) * 1000) if not args.no_filter else 0
+            filt_avg = (total_filter_time / max(qi + 1, 1) * 1000) if not args.no_filter else 0
             print(
                 f"  [{qi+1:3d}/{len(data)}] S1_R@1={s1_r1:.1%} S2_R@1={s2_r1:.1%} R@5={s2_r5:.1%}"
                 f"  filter={filt_avg:.0f}ms  route={route_decision}"
+                f"  boost_q={temporal_boost_fired_count}  scaffold_q={socratic_fired_count}"
             )
 
     n_q = len(per_question_log)
+    def _safe_mean(lst): return sum(lst) / len(lst) if lst else 0.0
 
     print(f"\n{'='*70}")
-    print(f"  COMBINED PIPELINE on LongMemEval_{args.split.upper()}  —  {n_q} questions")
+    print(f"  v33-ABLATE [{ablation_desc}] on LongMemEval_{args.split.upper()}  —  {n_q} questions")
     print(f"{'='*70}\n")
 
-    # Recompute aggregate metrics from per_question_log (handles resume correctly)
+    # Aggregate from log
     s1_r1_all = [float(e["s1_hit_at_1"]) for e in per_question_log]
     s1_r5_all = [float(e["s1_hit_at_5"]) for e in per_question_log]
     s2_r1_all = [float(e["s2_hit_at_1"]) for e in per_question_log]
     s2_r5_all = [float(e["s2_hit_at_5"]) for e in per_question_log]
-    # For k=3 and k=10, fall back to in-session metrics only if we have them; else approximate
-    def _safe_mean(lst): return sum(lst) / len(lst) if lst else 0.0
 
-    # Stage 1 results (use in-session k-level metrics for R@3/R@10, per_question for R@1/R@5)
-    print(f"  STAGE 1 (combined retrieval, zero LLM):")
-    print(f"  {'Metric':<20} {'R@1':>8} {'R@3':>8} {'R@5':>8} {'R@10':>8}")
-    print(f"  {'─'*20} {'─'*8} {'─'*8} {'─'*8} {'─'*8}")
-    s1_results = {}
+    # Per-qtype analysis
+    qtypes_seen = sorted(set(e["qtype"] for e in per_question_log))
+    print(f"  Per-qtype R@1 (Stage 2 final):")
+    print(f"  {'qtype':<30} {'n':>5} {'R@1':>8} {'vs_runJ-v33':>14}")
+    print(f"  {'─'*30} {'─'*5} {'─'*8} {'─'*14}")
+
+    runj_r1 = {}
+    runj_path = Path(__file__).parent / "runs" / "runJ-v33" / "per_question.json"
+    if runj_path.exists():
+        runj_data = json.load(open(runj_path))
+        for qt in qtypes_seen:
+            qt_entries = [e for e in runj_data if e.get("qtype") == qt]
+            if qt_entries:
+                runj_r1[qt] = sum(float(e["s2_hit_at_1"]) for e in qt_entries) / len(qt_entries)
+
+    qtype_stats: dict[str, dict] = {}
+    for qt in qtypes_seen:
+        qt_entries = [e for e in per_question_log if e.get("qtype") == qt]
+        n_qt = len(qt_entries)
+        r1_qt = sum(float(e["s2_hit_at_1"]) for e in qt_entries) / max(n_qt, 1)
+        r1_baseline = runj_r1.get(qt, None)
+        delta_str = f"{(r1_qt - r1_baseline):+.1%}" if r1_baseline is not None else "N/A"
+        qtype_stats[qt] = {"n": n_qt, "r1": r1_qt, "delta": delta_str}
+        print(f"  {qt:<30} {n_qt:>5} {r1_qt:>7.1%} {delta_str:>14}")
+
     s1_r1_v = _safe_mean(s1_r1_all)
-    s1_r3_v = _safe_mean(s1_metrics[3]["recall_any"]) if s1_metrics[3]["recall_any"] else s1_r1_v
+    s1b_r1_v = _safe_mean(s1b_metrics[1]["recall_any"])
+    s1b_r5_v = _safe_mean(s1b_metrics[5]["recall_any"])
     s1_r5_v = _safe_mean(s1_r5_all)
-    s1_r10_v = _safe_mean(s1_metrics[10]["recall_any"]) if s1_metrics[10]["recall_any"] else s1_r5_v
-    s1_results["recall_any"] = {1: s1_r1_v, 3: s1_r3_v, 5: s1_r5_v, 10: s1_r10_v}
-    for row_name, key in [("recall_any", "recall_any"), ("recall_all", "recall_all"), ("ndcg", "ndcg")]:
-        if key == "recall_any":
-            vals = [s1_r1_v, s1_r3_v, s1_r5_v, s1_r10_v]
-        else:
-            vals = [sum(s1_metrics[k][key]) / len(s1_metrics[k][key]) if s1_metrics[k][key] else 0 for k in [1, 3, 5, 10]]
-        if row_name not in s1_results:
-            s1_results[row_name] = {1: vals[0], 3: vals[1], 5: vals[2], 10: vals[3]}
-        print(f"  {row_name:<20} {vals[0]:>7.1%} {vals[1]:>7.1%} {vals[2]:>7.1%} {vals[3]:>7.1%}")
-
-    # Stage 2 results
-    print(f"\n  STAGE 2 (+ LLM filter, {FILTER_MODEL if not args.no_filter else 'disabled'}):")
-    print(f"  {'Metric':<20} {'R@1':>8} {'R@3':>8} {'R@5':>8} {'R@10':>8}")
-    print(f"  {'─'*20} {'─'*8} {'─'*8} {'─'*8} {'─'*8}")
-    s2_results = {}
     s2_r1_v = _safe_mean(s2_r1_all)
     s2_r3_v = _safe_mean(s2_metrics[3]["recall_any"]) if s2_metrics[3]["recall_any"] else s2_r1_v
     s2_r5_v = _safe_mean(s2_r5_all)
     s2_r10_v = _safe_mean(s2_metrics[10]["recall_any"]) if s2_metrics[10]["recall_any"] else s2_r5_v
-    s2_results["recall_any"] = {1: s2_r1_v, 3: s2_r3_v, 5: s2_r5_v, 10: s2_r10_v}
-    for row_name, key in [("recall_any", "recall_any"), ("recall_all", "recall_all"), ("ndcg", "ndcg")]:
-        if key == "recall_any":
-            vals = [s2_r1_v, s2_r3_v, s2_r5_v, s2_r10_v]
-        else:
-            vals = [sum(s2_metrics[k][key]) / len(s2_metrics[k][key]) if s2_metrics[k][key] else 0 for k in [1, 3, 5, 10]]
-        s2_results[row_name] = {1: vals[0], 3: vals[1], 5: vals[2], 10: vals[3]}
-        print(f"  {row_name:<20} {vals[0]:>7.1%} {vals[1]:>7.1%} {vals[2]:>7.1%} {vals[3]:>7.1%}")
 
-    # Delta
-    s1_r1 = s1_results["recall_any"][1]
-    s2_r1 = s2_results["recall_any"][1]
-    delta = s2_r1 - s1_r1
-    print(f"\n  Filter delta on R@1: {delta:+.1%}")
+    print(f"\n  Stage 1 R@1: {s1_r1_v:.3%}  Stage 2 R@1: {s2_r1_v:.3%}")
+    print(f"  Delta vs runJ-v33 (95.11%): {s2_r1_v - 0.9511:+.3%}")
+    print(f"\n  Filter methods: {filter_methods}")
+    print(f"  Temporal boost fired: {temporal_boost_fired_count}  Scaffold fired: {socratic_fired_count}")
 
-    avg_retrieval = total_retrieval_time / n_q if n_q else 0
-    avg_filter = total_filter_time / n_q if n_q else 0
-    print(f"  Avg retrieval: {avg_retrieval*1000:.0f}ms  Avg filter: {avg_filter*1000:.0f}ms  Total: {(avg_retrieval+avg_filter)*1000:.0f}ms")
-    print(f"  Filter methods: {filter_methods}")
-
-    # Save
+    # Save aggregate
     out = {
         "benchmark": "LongMemEval",
         "split": args.split.upper(),
-        "date": "2026-04-15",
-        "test": "combined_pipeline" if not args.no_filter else "combined_no_filter",
-        "engine": f"BM25+turn-level+prefixes → LLM filter ({FILTER_MODEL})" if not args.no_filter else "BM25+turn-level+prefixes (no filter)",
-        "filter_model": FILTER_MODEL if not args.no_filter else None,
+        "date": time.strftime("%Y-%m-%d"),
+        "test": f"v33-ablate-{ablation_desc}",
+        "ablation": ablation_desc,
+        "ablation_flags": {
+            "no_temporal_boost": args.no_temporal_boost,
+            "no_socratic": args.no_socratic,
+            "no_verify_guard": args.no_verify_guard,
+            "no_flagship": args.no_flagship,
+        },
+        "filter_model": FILTER_MODEL,
         "filter_top_k": FILTER_TOP_K,
         "questions_evaluated": n_q,
-        "stage1_metrics": {
-            "recall_any": {f"R@{k}": round(s1_results["recall_any"][k], 3) for k in [1, 3, 5, 10]},
+        "stage1_r1": round(s1_r1_v, 4),
+        "stage1b_r1": round(s1b_r1_v, 4),
+        "stage2_r1": round(s2_r1_v, 4),
+        "stage2_r5": round(s2_r5_v, 4),
+        "delta_vs_v33": round(s2_r1_v - 0.9511, 4),
+        "qtype_breakdown": {
+            qt: {"n": v["n"], "r1": round(v["r1"], 4), "delta_vs_v33": v["delta"]}
+            for qt, v in qtype_stats.items()
         },
-        "stage2_metrics": {
-            "recall_any": {f"R@{k}": round(s2_results["recall_any"][k], 3) for k in [1, 3, 5, 10]},
-            "recall_all": {f"R@{k}": round(s2_results["recall_all"][k], 3) for k in [1, 3, 5, 10]},
-            "ndcg": {f"R@{k}": round(s2_results["ndcg"][k], 3) for k in [1, 3, 5, 10]},
-        },
-        "filter_delta_r1": round(delta, 3),
         "filter_methods": filter_methods,
-        "avg_retrieval_ms": round(avg_retrieval * 1000),
-        "avg_filter_ms": round(avg_filter * 1000),
+        "temporal_boost_fired_count": temporal_boost_fired_count,
+        "socratic_fired_count": socratic_fired_count,
+        "avg_retrieval_ms": round(total_retrieval_time / n_q * 1000) if n_q else 0,
+        "avg_filter_ms": round(total_filter_time / n_q * 1000) if n_q else 0,
         "total_time_s": round(total_retrieval_time + total_filter_time, 1),
     }
-    out_path = Path(__file__).parent / "results-guard-2026-04-17.json"
+    out_path = run_dir / "aggregate.json"
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
-    print(f"\n  Aggregate saved to {out_path}")
 
-    # Save per-question log
     pq_path = run_dir / "per_question.json"
     with open(pq_path, "w") as f:
         json.dump(per_question_log, f, indent=2)
 
-    # Per-question summary
-    wins = sum(1 for pq in per_question_log if not pq["s1_hit_at_1"] and pq["s2_hit_at_1"])
-    losses = sum(1 for pq in per_question_log if pq["s1_hit_at_1"] and not pq["s2_hit_at_1"])
-    both_right = sum(1 for pq in per_question_log if pq["s1_hit_at_1"] and pq["s2_hit_at_1"])
-    both_wrong = sum(1 for pq in per_question_log if not pq["s1_hit_at_1"] and not pq["s2_hit_at_1"])
-    print(f"\n  Per-question: wins={wins} losses={losses} both_right={both_right} both_wrong={both_wrong}")
-    print(f"  Per-question log saved to {pq_path}")
-
-    # Also save aggregate to run dir
-    with open(run_dir / "aggregate.json", "w") as f:
-        json.dump(out, f, indent=2)
+    print(f"\n  Aggregate saved to {out_path}")
+    print(f"  Per-question log: {pq_path}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,162 @@
+[
+  {
+    "qi": 0,
+    "qid": "e47becba",
+    "qtype": "single-session-user",
+    "question": "What degree did I graduate with?",
+    "gold_session_ids": [
+      "answer_280352e9"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_280352e9",
+      "sharegpt_UnjngE7_65",
+      "sharegpt_rnG0ZuV_0",
+      "sharegpt_QZMeA7V_17",
+      "sharegpt_T1EiHWI_13"
+    ],
+    "s2_top5_ids": [
+      "answer_280352e9",
+      "sharegpt_UnjngE7_65",
+      "sharegpt_rnG0ZuV_0",
+      "sharegpt_QZMeA7V_17",
+      "sharegpt_T1EiHWI_13"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "default_s1",
+    "filter_called": false,
+    "filter_ms": 0
+  },
+  {
+    "qi": 1,
+    "qid": "118b2229",
+    "qtype": "single-session-user",
+    "question": "How long is my daily commute to work?",
+    "gold_session_ids": [
+      "answer_40a90d51"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_40a90d51",
+      "db73b7e4_4",
+      "004edb32",
+      "7d8b5834_1",
+      "5dce60dd"
+    ],
+    "s2_top5_ids": [
+      "answer_40a90d51",
+      "db73b7e4_4",
+      "004edb32",
+      "7d8b5834_1",
+      "5dce60dd"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "default_s1",
+    "filter_called": false,
+    "filter_ms": 0
+  },
+  {
+    "qi": 2,
+    "qid": "51a45a95",
+    "qtype": "single-session-user",
+    "question": "Where did I redeem a $5 coupon on coffee creamer?",
+    "gold_session_ids": [
+      "answer_d61669c7"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_d61669c7",
+      "sharegpt_MKMWjX0_25",
+      "sharegpt_3vxz2Zr_0",
+      "sharegpt_CyJ3dal_0",
+      "ultrachat_123028"
+    ],
+    "s2_top5_ids": [
+      "answer_d61669c7",
+      "sharegpt_MKMWjX0_25",
+      "sharegpt_3vxz2Zr_0",
+      "sharegpt_CyJ3dal_0",
+      "ultrachat_123028"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "default_s1",
+    "filter_called": false,
+    "filter_ms": 0
+  },
+  {
+    "qi": 3,
+    "qid": "58bf7951",
+    "qtype": "single-session-user",
+    "question": "What play did I attend at the local community theater?",
+    "gold_session_ids": [
+      "answer_355c48bb"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_355c48bb",
+      "ultrachat_155546",
+      "sharegpt_DGiqvVv_270",
+      "sharegpt_M84blrA_53",
+      "ultrachat_71618"
+    ],
+    "s2_top5_ids": [
+      "answer_355c48bb",
+      "ultrachat_155546",
+      "sharegpt_DGiqvVv_270",
+      "sharegpt_M84blrA_53",
+      "ultrachat_71618"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "default_s1",
+    "filter_called": false,
+    "filter_ms": 0
+  },
+  {
+    "qi": 4,
+    "qid": "1e043500",
+    "qtype": "single-session-user",
+    "question": "What is the name of the playlist I created on Spotify?",
+    "gold_session_ids": [
+      "answer_3e012175"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_3e012175",
+      "01bd9def",
+      "8020d945_2",
+      "2d0d0004",
+      "sharegpt_uQMdL9t_0"
+    ],
+    "s2_top5_ids": [
+      "answer_3e012175",
+      "01bd9def",
+      "8020d945_2",
+      "2d0d0004",
+      "sharegpt_uQMdL9t_0"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "default_s1",
+    "filter_called": false,
+    "filter_ms": 0
+  }
+]

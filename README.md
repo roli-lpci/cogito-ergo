@@ -1,10 +1,12 @@
 # cogito-ergo
 
-Memory retrieval for AI agents with structural fidelity. **85% R@1** on the
-internal 31-case eval, **93.4% R@1** on LongMemEval_S (hybrid tier, see
-[Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s)).
-The filter LLM outputs only integers — it structurally cannot corrupt,
-rephrase, or hallucinate into the content returned to your agent.
+Memory retrieval for AI agents with structural fidelity. Two purpose-built paths:
+the existing `/recall` scores **85% R@1** on cogito's internal 31-case atomic-fact
+eval; the new `/recall_hybrid` tier scores **93.4% R@1** on LongMemEval_S
+(session-retrieval benchmark, see [Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s)).
+Different workloads, different tools. The filter LLM outputs only integers — it
+structurally cannot corrupt, rephrase, or hallucinate into the content returned
+to your agent.
 
 [![PyPI version](https://img.shields.io/pypi/v/cogito-ergo)](https://pypi.org/project/cogito-ergo/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/cogito-ergo/)
@@ -260,6 +262,61 @@ behavior is unchanged — `/recall` still drives `cogito recall`. Use
 `/recall_hybrid` or `cogito recall-hybrid` when you need the hybrid trait.
 
 ---
+
+
+### Claude Code session memory
+
+cogito-ergo v0.3.0 can ingest your Claude Code sessions and query them with the
+same turn-pair chunking used in the LongMemEval benchmark.
+
+**Why it matters:** The 93.4% R@1 benchmark result requires role-structured session
+data (user+assistant turn pairs). Flat atomic memories don't have this structure.
+Claude Code stores every session as role-structured JSONL — wiring it to cogito
+uses the same retrieval architecture as the benchmark, though Claude Code sessions
+have not been independently evaluated at the same scale.
+
+**Install:**
+```bash
+# No new dependencies — uses existing chromadb + Ollama (nomic-embed-text)
+```
+
+**Ingest:**
+```bash
+# Preview (dry run)
+python3 -m cogito.ingest_claude_sessions --since 2026-04-11 --dry-run
+
+# Ingest last 7 days
+python3 -m cogito.ingest_claude_sessions --since 2026-04-11
+
+# Ingest all sessions (may take a few minutes)
+python3 -m cogito.ingest_claude_sessions
+```
+
+**Query:**
+```python
+from cogito.recall_sessions import query_sessions, query_both
+
+# Session history only
+results = query_sessions("what did we discuss about LPCI last week?", top_k=3)
+
+# Atomic facts + session history side-by-side (no auto-merge)
+both = query_both("cogito architecture decisions")
+```
+
+**MCP tools (new in v0.3.0):**
+- `cogito_recall_sessions` — query Claude Code sessions
+- `cogito_recall_both` — 3 atomic + 3 session results side-by-side
+
+**Expected accuracy:** ~80-93% depending on query specificity (same pipeline as
+the benchmark; accuracy drops when querying across very long sessions because the
+session embedding averages across all turn content).
+
+**Privacy:** All data stays local. Embedding uses Ollama (localhost:11434, nomic-embed-text).
+ChromaDB at `~/.cogito/store`. Nothing sent to any cloud API. Ingestion is explicit —
+nothing runs automatically. Re-running ingest is idempotent (dedup via content hash).
+
+Full demo: [`docs/claude-code-memory-demo.md`](docs/claude-code-memory-demo.md)
+
 
 ## HTTP API
 

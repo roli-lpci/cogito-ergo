@@ -1,0 +1,1201 @@
+{
+  "s0-minimal-baseline": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 2,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 1,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 3,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": true,
+          "ranked_1": 5,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 2,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 0,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "s2-temporal-inline": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 1,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 6,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": true,
+          "ranked_1": 2,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": false,
+          "ranked_1": 4,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": true,
+          "ranked_1": 5,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 0,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": false,
+          "ranked_1": 4,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 0,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "s1-temporal-sysprefix": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 1,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 3,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": false,
+          "ranked_1": 2,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": false,
+          "ranked_1": 4,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 1,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "s4-declarative-preference": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 1,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 6,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": false,
+          "ranked_1": 4,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 0,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": false,
+          "ranked_1": 4,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 0,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": null,
+          "raw": "[]"
+        }
+      ]
+    }
+  },
+  "s8-socratic": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 3,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 6,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": true,
+          "ranked_1": 5,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 1,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        }
+      ]
+    }
+  },
+  "empty-format-only": {
+    "multi-session": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "6d550036",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "c4a1ceb8",
+          "win": true,
+          "ranked_1": 2,
+          "gold_at": [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ]
+    },
+    "single-session-preference": {
+      "wins": 2,
+      "total": 3,
+      "per_q": [
+        {
+          "qid": "06f04340",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "d24813b1",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            4
+          ]
+        },
+        {
+          "qid": "1c0ddc50",
+          "win": true,
+          "ranked_1": 4,
+          "gold_at": [
+            4
+          ]
+        }
+      ]
+    },
+    "temporal-reasoning": {
+      "wins": 6,
+      "total": 12,
+      "per_q": [
+        {
+          "qid": "gpt4_fa19884c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_b5700ca9",
+          "win": false,
+          "ranked_1": 3,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_1916e0ea",
+          "win": null,
+          "raw": "[]"
+        },
+        {
+          "qid": "4dfccbf7",
+          "win": null,
+          "raw": "[]"
+        },
+        {
+          "qid": "gpt4_61e13b3c",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "gpt4_e061b84f",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "5e1b23de",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_59149c78",
+          "win": true,
+          "ranked_1": 3,
+          "gold_at": [
+            3
+          ]
+        },
+        {
+          "qid": "gpt4_fa19884d",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            4
+          ]
+        },
+        {
+          "qid": "9a707b82",
+          "win": false,
+          "ranked_1": 5,
+          "gold_at": [
+            2
+          ]
+        },
+        {
+          "qid": "f0853d11",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1
+          ]
+        },
+        {
+          "qid": "gpt4_5438fa52",
+          "win": true,
+          "ranked_1": 5,
+          "gold_at": [
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    "knowledge-update": {
+      "wins": 1,
+      "total": 2,
+      "per_q": [
+        {
+          "qid": "89941a93",
+          "win": true,
+          "ranked_1": 1,
+          "gold_at": [
+            1,
+            2
+          ]
+        },
+        {
+          "qid": "dad224aa",
+          "win": false,
+          "ranked_1": 1,
+          "gold_at": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "single-session-assistant": {
+      "wins": 0,
+      "total": 1,
+      "per_q": [
+        {
+          "qid": "18dcd5a5",
+          "win": null,
+          "raw": "[]"
+        }
+      ]
+    }
+  }
+}

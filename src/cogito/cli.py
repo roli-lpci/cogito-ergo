@@ -198,7 +198,7 @@ def main():
     # recall-hybrid (BM25 + dense + RRF + tiered LLM)
     p_hybrid = sub.add_parser(
         "recall-hybrid",
-        help="Hybrid BM25+dense+RRF recall with tiered LLM escalation (93.4% R@1 architecture)",
+        help="Hybrid BM25+dense+RRF recall with tiered LLM escalation (93.4%% R@1 architecture)",
     )
     p_hybrid.add_argument("query")
     p_hybrid.add_argument("--limit", type=int, default=50)

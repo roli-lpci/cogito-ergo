@@ -1,0 +1,110 @@
+[
+  {
+    "qi": 0,
+    "qid": "e47becba",
+    "qtype": "single-session-user",
+    "question": "What degree did I graduate with?",
+    "gold_session_ids": [
+      "answer_280352e9"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_280352e9",
+      "sharegpt_UnjngE7_65",
+      "sharegpt_rnG0ZuV_0",
+      "sharegpt_QZMeA7V_17",
+      "sharegpt_T1EiHWI_13"
+    ],
+    "s2_top5_ids": [
+      "answer_280352e9",
+      "sharegpt_UnjngE7_65",
+      "sharegpt_rnG0ZuV_0",
+      "sharegpt_QZMeA7V_17",
+      "sharegpt_T1EiHWI_13"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "no_filter",
+    "filter_called": false,
+    "filter_ms": 0,
+    "temporal_boost_fired": false,
+    "temporal_boost_count": 0,
+    "scaffold": null,
+    "ablation": "no-temporal-boost"
+  },
+  {
+    "qi": 1,
+    "qid": "118b2229",
+    "qtype": "single-session-user",
+    "question": "How long is my daily commute to work?",
+    "gold_session_ids": [
+      "answer_40a90d51"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_40a90d51",
+      "db73b7e4_4",
+      "004edb32",
+      "7d8b5834_1",
+      "5dce60dd"
+    ],
+    "s2_top5_ids": [
+      "answer_40a90d51",
+      "db73b7e4_4",
+      "004edb32",
+      "7d8b5834_1",
+      "5dce60dd"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "no_filter",
+    "filter_called": false,
+    "filter_ms": 0,
+    "temporal_boost_fired": false,
+    "temporal_boost_count": 0,
+    "scaffold": null,
+    "ablation": "no-temporal-boost"
+  },
+  {
+    "qi": 2,
+    "qid": "51a45a95",
+    "qtype": "single-session-user",
+    "question": "Where did I redeem a $5 coupon on coffee creamer?",
+    "gold_session_ids": [
+      "answer_d61669c7"
+    ],
+    "n_gold": 1,
+    "is_multi_answer": false,
+    "s1_top5_ids": [
+      "answer_d61669c7",
+      "sharegpt_MKMWjX0_25",
+      "sharegpt_3vxz2Zr_0",
+      "sharegpt_CyJ3dal_0",
+      "ultrachat_123028"
+    ],
+    "s2_top5_ids": [
+      "answer_d61669c7",
+      "sharegpt_MKMWjX0_25",
+      "sharegpt_3vxz2Zr_0",
+      "sharegpt_CyJ3dal_0",
+      "ultrachat_123028"
+    ],
+    "s1_hit_at_1": true,
+    "s2_hit_at_1": true,
+    "s1_hit_at_5": true,
+    "s2_hit_at_5": true,
+    "route_decision": "no_filter",
+    "filter_called": false,
+    "filter_ms": 0,
+    "temporal_boost_fired": false,
+    "temporal_boost_count": 0,
+    "scaffold": null,
+    "ablation": "no-temporal-boost"
+  }
+]

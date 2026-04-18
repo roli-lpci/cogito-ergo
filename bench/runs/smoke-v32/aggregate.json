@@ -1,0 +1,74 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "date": "2026-04-17",
+  "test": "combined_pipeline_v32",
+  "modifications": [
+    "temporal_boost_stage1",
+    "meta_scaffold_s14_union_s8_contrastive"
+  ],
+  "engine": "BM25+turn-level+prefixes \u2192 temporal-boost \u2192 meta-scaffold s14-union (qwen-turbo)",
+  "filter_model": "qwen-turbo",
+  "filter_top_k": 5,
+  "questions_evaluated": 20,
+  "stage1_metrics": {
+    "recall_any": {
+      "R@1": 0.95,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    }
+  },
+  "stage1b_metrics": {
+    "recall_any": {
+      "R@1": 0.95,
+      "R@5": 1.0
+    }
+  },
+  "stage2_metrics": {
+    "recall_any": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    },
+    "recall_all": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    },
+    "ndcg": {
+      "R@1": 1.0,
+      "R@3": 1.0,
+      "R@5": 1.0,
+      "R@10": 1.0
+    }
+  },
+  "qtype_breakdown": {
+    "single-session-user": {
+      "n": 20,
+      "r1": 1.0,
+      "delta_vs_runc": "+0.0%"
+    }
+  },
+  "vs_runc_guard": 0.06,
+  "vs_mastra": 0.0513,
+  "temporal_boost_fired_count": 0,
+  "meta_scaffold_fired_count": 2,
+  "scaffold_agree_count": 0,
+  "scaffold_disagree_count": 2,
+  "scaffold_agree_rate": 0.0,
+  "scaffold_final_choices": {
+    "fallback_both_failed": 1,
+    "A_fallback": 1
+  },
+  "filter_methods": {
+    "default_s1": 17,
+    "flagship": 1,
+    "llm": 2
+  },
+  "avg_retrieval_ms": 761,
+  "avg_filter_ms": 556,
+  "total_time_s": 26.4
+}

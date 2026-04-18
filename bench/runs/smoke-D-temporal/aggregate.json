@@ -1,0 +1,19 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "shot": "D-temporal",
+  "filter_model": "gemma3:4b",
+  "scaffold_position": "system_prompt_prefix",
+  "questions_evaluated": 5,
+  "s2_r1": 1.0,
+  "s2_r5": 1.0,
+  "per_qtype": {
+    "single-session-user": {
+      "s2_r1": 1.0,
+      "n": 5
+    }
+  },
+  "filter_methods": {
+    "default_s1": 5
+  }
+}

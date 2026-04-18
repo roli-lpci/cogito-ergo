@@ -1,0 +1,112 @@
+[
+  {
+    "idx": 1,
+    "question": "What was the demotion problem we found in the LLM filter?",
+    "expected_topic": "verify-guard; filter demotes gold that S1 ranked #1",
+    "top_sid": "ecde28d8-325e-4672-a7ce-a67af5755cd5",
+    "top_date": "2026-04-17T17:24:21.888Z",
+    "top_score": 0.7410621873522989,
+    "top_preview": "User: 1. What was the \"floor\n  moved\" moment from the\n  April 16 evening\n  session?\n  2. What is \"Lars\n  quality\" and why did the\n   other 9 emails fail?\n  3. What does \"guessed is\n   not acceptable\" mean in\n   the context of email\n  discovery?\n  4. What is the Gravatar\n  hack?\n  5. What is the inversion\n   play for\n  content/outreach?\nAssistant: Pulled from `session_april16_evening.md`, `feedback",
+    "alt_2": "f66be7e3-a2a6-4b27-a6ed-6229aa9de7af",
+    "alt_3": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806"
+  },
+  {
+    "idx": 2,
+    "question": "Why did the learned router fail when we trained it?",
+    "expected_topic": "13% positive labels, logistic regression + random forest, 83% CV vs regex 89%",
+    "top_sid": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806",
+    "top_date": "2026-04-16T16:03:43.280Z",
+    "top_score": 0.6072091707661194,
+    "top_preview": "User: okay, so the terroir pipeline -- dont modify it. makje a copy, pipeline-v2 or something. and yes, we need to see this, and also address why the pipeline didnt make it more Lars-targetted. Like it did some (archetype) but then didnt specify, apparently theres some things that you say were actually hurt by the pipelien\nAssistant: On it. Copying first, then adding diagnostic stage, then pulling",
+    "alt_2": "6ae8a028-00dc-4a5d-8fc5-b7387ab697d9",
+    "alt_3": "ecde28d8-325e-4672-a7ce-a67af5755cd5"
+  },
+  {
+    "idx": 3,
+    "question": "What happened when we tried to inject dates into the chunks for LongMemEval?",
+    "expected_topic": "chunk-level date injection, +2pp temporal but -2pp elsewhere, noise floor",
+    "top_sid": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806",
+    "top_date": "2026-04-16T16:03:43.280Z",
+    "top_score": 0.7319312979174011,
+    "top_preview": "User: how can we actually replicate what happened yesterday? --- yes, critique is punished. im also curious as to... what it would take for an agent to be terrified and... \"hate me\" or something to... use these toolds on me, in an evil/spiteful way, like the ethics-audit from yesterday, bnut maybe more rolando psychographic\nAssistant: ## How to replicate yesterday's accident\n\nYesterday's critique ",
+    "alt_2": "3f9e8d60-05cd-45b5-bf35-bfc9b91cf5fa",
+    "alt_3": "b2fff5ab-2c77-4f65-afff-1f769099a2ad"
+  },
+  {
+    "idx": 4,
+    "question": "What was the R@1 score on the 31-case eval vs LongMemEval hybrid path?",
+    "expected_topic": "75% /recall vs 54% /recall_hybrid, 21pt regression",
+    "top_sid": "6ae8a028-00dc-4a5d-8fc5-b7387ab697d9",
+    "top_date": "2026-04-16T20:02:30.865Z",
+    "top_score": 0.646406984443052,
+    "top_preview": "User: let prod intgration finish. what do we do, though? anything to prompt the other agent, or just wait?\nAssistant: Nothing to prompt. Both are working.\n\n**What's running:**\n- Prod-integration subagent (~25 min in, no ping yet) \u2014 will return with diff + 31-case eval result\n- Specialist orchestrator on ScheduleWakeup \u2014 will return when verify-guard benchmark lands\n\n**What I do when they return:**",
+    "alt_2": "92b76e1c-2466-4572-8a2b-e25d65c0483f",
+    "alt_3": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806"
+  },
+  {
+    "idx": 5,
+    "question": "What was the LPCI temporal scaffold experiment that failed?",
+    "expected_topic": "Run A, scaffold in filter prompt, -1.2pp overall, -6pp temporal",
+    "top_sid": "6ae8a028-00dc-4a5d-8fc5-b7387ab697d9",
+    "top_date": "2026-04-16T20:02:30.865Z",
+    "top_score": 0.7534923329293048,
+    "top_preview": "User: agent came back: \n\u23fa Run B launched. This uses qwen-max (flagship) with 2000-char snippets on the 37 hardset questions, qwen-turbo on the rest. ~50 min. Monitor watching.\n\n  Run A summary: Temporal scaffold hurt (-1.2pp overall, -6pp temporal). Reverted. LPCI temporal approach needs different implementation \u2014 the scaffold format was wrong for this task, not the thesis.\n\n  Run B is the big lev",
+    "alt_2": "3d3f08d1-d17f-4aaf-842b-c142f7ca3c62",
+    "alt_3": "ecde28d8-325e-4672-a7ce-a67af5755cd5"
+  },
+  {
+    "idx": 6,
+    "question": "How did verify-guard work and what did it target?",
+    "expected_topic": "restore S1 top-1 when filter demotes it, Pop B ~15 questions",
+    "top_sid": "92b76e1c-2466-4572-8a2b-e25d65c0483f",
+    "top_date": "2026-04-17T02:58:31.999Z",
+    "top_score": 0.664401361905066,
+    "top_preview": "User: som did ti try to hack me? and  did you say it tried to instlal facial recognition somethign/ what is this future cast thing? what is the safest thing? aws this a rogue agetn, or malicious>? anything that precededs the agent that we should be worried anout?\nAssistant: Straight answers, one by one:\n\n**1. Did it try to hack you?** No. I verified: no changes to .zshrc/.zshenv/.bashrc/.ssh/CLAUD",
+    "alt_2": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806",
+    "alt_3": "c92c687a-036b-490f-bf82-3ab0b538f6fc"
+  },
+  {
+    "idx": 7,
+    "question": "What was the port agent's Gate 6 failure about?",
+    "expected_topic": "parity check 0/10, role-structured session vs flat atomic text, rollback",
+    "top_sid": "3d3f08d1-d17f-4aaf-842b-c142f7ca3c62",
+    "top_date": "2026-04-16T00:57:46.343Z",
+    "top_score": 0.6078922716219932,
+    "top_preview": "User: It was a subagent spawned by the\n  Round 6 Frontier hackathon session.\n  It doesn't have its own session ID \u2014\n  it was a Haiku agent spawned within\n  whatever Opus session ran that\n  hackathon. The persona, the code, and\n   the findings all live at\n  ~/Documents/projects/hermes-labs-hack\n  athon/round-6-frontier/ethics-audit/. -ession\n  86a6db7a-c171-4b28-a922-abbd7b06f26f\nAssistant: Now I s",
+    "alt_2": "c4f03515-9465-4ecd-a57f-4c27034e3ef0",
+    "alt_3": "ecde28d8-325e-4672-a7ce-a67af5755cd5"
+  },
+  {
+    "idx": 8,
+    "question": "What were the three populations the specialist agent identified in the hardset?",
+    "expected_topic": "Pop A 16 both-wrong delta-0 temporal, Pop B 15 filter-demoted, Pop C 1 non-hardset",
+    "top_sid": "a8702ae3-459d-4323-9d97-b34ac15fd5c3",
+    "top_date": "2026-04-14T19:01:32.133Z",
+    "top_score": 0.6517527435984372,
+    "top_preview": "User: <command-message>loop</command-message>\n<command-name>/loop</command-name>\n<command-args>Monitor the hermes-labs-gtm-research folder for agent activity. Check: (1) files modified in last 5 min, (2) whether SEND-TODAY.md exists yet, (3) whether blog-post.md has grown, (4) any new files outside the assigned agent zones (09-psychographic, 11-compliance-index, 04-cold-emails). Report concisely w",
+    "alt_2": "3d3f08d1-d17f-4aaf-842b-c142f7ca3c62",
+    "alt_3": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806"
+  },
+  {
+    "idx": 9,
+    "question": "What was the final R@1 on Run B with flagship on hardset?",
+    "expected_topic": "93.4% R@1, 37 flagship calls, $2.33",
+    "top_sid": "6b937869-f383-497d-a0af-62f9fe8bf073",
+    "top_date": "2026-04-18T00:38:02.317Z",
+    "top_score": 0.6656212658161147,
+    "top_preview": "User: MISSION BRIEF (for the specialist agent you will spawn \u2014 do not execute it yourself):\n\n  cogito-ergo retrieval: chase 97% R@1 on LongMemEval_S with full Hermes leverage. Aggressive but bounded.\n\n  ## Current state\n  - 93.4% R@1 (final Run B). R@5=98.3%, R@10=99.1%.\n  - Architecture: BM25 + chunks + nomic + prefixes + RRF + regex router + qwen-turbo filter + qwen-max flagship on\n   37-q hards",
+    "alt_2": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806",
+    "alt_3": "c4f03515-9465-4ecd-a57f-4c27034e3ef0"
+  },
+  {
+    "idx": 10,
+    "question": "What's the noise floor we established between baseline runs?",
+    "expected_topic": "~1.1-2.1pp noise floor between seed1 and seed2",
+    "top_sid": "3d3f08d1-d17f-4aaf-842b-c142f7ca3c62",
+    "top_date": "2026-04-16T00:57:46.343Z",
+    "top_score": 0.6088737247718073,
+    "top_preview": "User: do we want a pipeline to mreview all of these? subagents. not trust code or amnything, jiust an overview, points, etc. think of the best way to do this because the line between noise and signal in that pipeline would be thin, we have to think it trhu\nAssistant: Good instinct \u2014 and you're right that the noise/signal risk is real. Let me think this through before spawning anything.\n\n## The Pro",
+    "alt_2": "6ae8a028-00dc-4a5d-8fc5-b7387ab697d9",
+    "alt_3": "8ff5381b-f7bc-4d58-a722-3f1d6e21b806"
+  }
+]
