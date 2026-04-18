@@ -51,10 +51,13 @@ _RRF_K = 60
 
 # Cosine rerank weight — blend RRF coverage with cosine precision.
 # 0.0 = pure RRF order, 1.0 = pure cosine order.
+# calibrated: 0.7 matched LongMemEval_S benchmark (470q); lower values reduce precision.
 _COSINE_WEIGHT = 0.7
 
 # Score floor — if top result cosine is below this AND the gap between
 # top score and mean score is below _SCORE_GAP_MIN, return empty.
+# calibrated: 0.25 floor + 0.1 gap derived from nomic-embed-text cosine distributions
+# on cogito-ergo dev set; fires <5% of queries in normal operation.
 _COSINE_FLOOR = 0.25
 _SCORE_GAP_MIN = 0.1
 

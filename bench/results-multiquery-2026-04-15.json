@@ -6,27 +6,27 @@
   "engine": "recall_b + LLM multi-query expansion (gemma3:4b)",
   "embed_model": "nomic-embed-text",
   "llm_model": "gemma3:4b",
-  "questions_evaluated": 20,
+  "questions_evaluated": 465,
   "metrics": {
     "recall_any": {
-      "R@1": 0.65,
-      "R@3": 0.7,
-      "R@5": 0.75,
-      "R@10": 0.85
+      "R@1": 0.585,
+      "R@3": 0.785,
+      "R@5": 0.856,
+      "R@10": 0.933
     },
     "recall_all": {
-      "R@1": 0.65,
-      "R@3": 0.7,
-      "R@5": 0.75,
-      "R@10": 0.85
+      "R@1": 0.217,
+      "R@3": 0.538,
+      "R@5": 0.645,
+      "R@10": 0.806
     },
     "ndcg": {
-      "R@1": 0.65,
-      "R@3": 0.682,
-      "R@5": 0.703,
-      "R@10": 0.736
+      "R@1": 0.585,
+      "R@3": 0.649,
+      "R@5": 0.687,
+      "R@10": 0.731
     }
   },
-  "avg_retrieval_time_ms": 2708,
-  "total_time_s": 54.2
+  "avg_retrieval_time_ms": 1453,
+  "total_time_s": 675.6
 }

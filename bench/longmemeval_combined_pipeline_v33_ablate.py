@@ -77,8 +77,10 @@ DASHSCOPE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/com
 QUERY_PREFIX = "search_query: "
 DOC_PREFIX = "search_document: "
 GAP_THRESHOLD = 0.1  # score gap: top1 - top2. Above = confident, skip LLM.
+# calibrated: 0.1 from LongMemEval_S score distributions (runB-flagship, 470q)
 
 # Temporal boost strength (multiplier on blended score when signal matches)
+# calibrated: 1.5 max and 1.15 light from ablation runK/runL (LongMemEval_S 470q)
 TEMPORAL_BOOST_MAX = 1.5
 TEMPORAL_BOOST_LIGHT = 1.15  # light recency: fallback when no specific direction
 

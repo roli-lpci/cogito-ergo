@@ -216,7 +216,7 @@ def query_sessions(query: str, top_k: int = 3) -> list[SessionResult]:
             bm25 = _bm25_score(query_tokens, chunk)
             bm25_norm = min(bm25 / 5.0, 1.0)  # rough normalisation
 
-            chunk_score = 0.7 * cos + 0.3 * bm25_norm
+            chunk_score = 0.7 * cos + 0.3 * bm25_norm  # calibrated: 70/30 cosine/bm25 blend from recall_b experiments
             if chunk_score > best_score:
                 best_score = chunk_score
                 best_chunk = chunk

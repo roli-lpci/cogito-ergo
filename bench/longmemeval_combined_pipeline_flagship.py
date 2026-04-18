@@ -67,6 +67,7 @@ _STOP = frozenset({
 })
 MAX_SUBQUERIES = 8
 _RRF_K = 60
+# calibrated: 0.7 cosine weight matched LongMemEval_S benchmark (470q, runB-flagship)
 _COSINE_WEIGHT = 0.7
 OLLAMA_URL = "http://localhost:11434"
 EMBED_MODEL = "nomic-embed-text"
@@ -78,6 +79,7 @@ DASHSCOPE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/com
 QUERY_PREFIX = "search_query: "
 DOC_PREFIX = "search_document: "
 GAP_THRESHOLD = 0.1  # score gap: top1 - top2. Above = confident, skip LLM.
+# calibrated: 0.1 from LongMemEval_S score distributions (runB-flagship, 470q)
 
 # ---------------------------------------------------------------------------
 # Router: classify query → route decision

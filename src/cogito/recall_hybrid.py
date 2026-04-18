@@ -61,6 +61,8 @@ _RRF_K = 60
 _COSINE_WEIGHT = 0.7
 _QUERY_PREFIX = "search_query: "
 _DOC_PREFIX = "search_document: "
+# calibrated: 0.1 gap threshold from LongMemEval_S score distributions; fires ~15%
+# of queries (escalates to flagship when top-1 and top-2 are too close to trust).
 _GAP_THRESHOLD = 0.1  # top1 − top2 score gap; above = confident, below = escalate
 _EMBED_MODEL = "nomic-embed-text"
 _DEFAULT_FILTER_TOP_K = 5
