@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.0 — 2026-04-16
+
+- New `recall_hybrid` path: BM25 + dense + RRF with tiered LLM escalation.
+  Port of the architecture that reached **93.4% R@1 on LongMemEval_S** (up
+  from the 56% mem0 baseline).
+- New `POST /recall_hybrid` HTTP endpoint and `cogito recall-hybrid` CLI.
+- New tiers: `zero_llm` (no LLM, fastest), `filter` (cheap rerank, default),
+  `flagship` (stronger model, 4x larger snippets).
+- New env vars: `COGITO_FLAGSHIP_ENDPOINT`, `COGITO_FLAGSHIP_TOKEN`,
+  `COGITO_FLAGSHIP_MODEL`, `COGITO_FLAGSHIP_TIMEOUT_MS`,
+  `COGITO_HYBRID_COSINE_WEIGHT`. Optional `[hybrid]` extra for `bm25s`.
+- Existing `/recall` and `/recall_b` behavior is unchanged. The hybrid path
+  is strictly opt-in.
+
 ## v0.2.0 — 2026-03-28
 
 - Dual-pipeline recall: zero-LLM `recall_b` (RRF multi-query) feeds `recall` (integer-pointer LLM filter)

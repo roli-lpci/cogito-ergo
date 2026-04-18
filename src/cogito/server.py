@@ -13,6 +13,12 @@ Endpoints:
        → {"memories": [...], "method": "filter"|"fallback_*"}
        Broad search + cheap-LLM integer-pointer filter. Smart.
 
+  POST /recall_hybrid  {"text": "...", "limit": 50, "tier": "filter", "top_k": 5}
+       → {"memories": [...], "method": "hybrid_*|..."}
+       BM25 + dense + RRF + tiered LLM escalation.
+       tier is one of: "zero_llm" | "filter" (default) | "flagship".
+       Opt-in production port of the 93.4% LongMemEval_S pipeline.
+
   POST /store   {"text": "...", "id": "<optional uuid>"}
        → {"id": "...", "text": "..."}
        Write one memory verbatim — no extraction LLM, agent decides content.
@@ -44,6 +50,7 @@ from cogito import __version__
 from cogito.config import load, mem0_config
 from cogito.recall import recall as do_recall
 from cogito.recall_b import recall_b as do_recall_b
+from cogito.recall_hybrid import recall_hybrid as do_recall_hybrid
 from cogito.snapshot import _read_snapshot, _snapshot_path
 
 
@@ -163,6 +170,26 @@ def make_handler(memory: object, cfg: dict) -> type:
                         limit=limit,
                     )
                     print(f"[cogito] /recall_b '{text[:50]}' → {len(memories)} results ({method})", flush=True)
+                    self._json({"memories": memories, "method": method})
+
+                elif self.path == "/recall_hybrid":
+                    # BM25 + dense + RRF + tiered LLM escalation.
+                    # Opt-in production port of the 93.4% LongMemEval_S pipeline.
+                    text = data.get("text", "")
+                    if not text or len(text.strip()) < 3:
+                        self._json({"memories": [], "method": "empty_query"})
+                        return
+                    limit = int(data.get("limit", cfg.get("recall_limit", 50)))
+                    tier = data.get("tier", "filter")
+                    top_k = int(data.get("top_k", 5))
+                    if tier not in ("zero_llm", "filter", "flagship"):
+                        self._json({"error": f"invalid tier: {tier}"}, 400)
+                        return
+                    memories, method = do_recall_hybrid(
+                        memory, text, user_id=user_id, cfg=cfg,
+                        limit=limit, tier=tier, top_k=top_k,
+                    )
+                    print(f"[cogito] /recall_hybrid '{text[:50]}' tier={tier} → {len(memories)} results ({method})", flush=True)
                     self._json({"memories": memories, "method": method})
 
                 elif self.path == "/store":

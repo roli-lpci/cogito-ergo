@@ -355,6 +355,18 @@ def run_mode(
             memories = resp.get("memories", [])
             r = _score_result(case, memories, "", "D", latency)
 
+        elif mode == "E":
+            # Hybrid recall: BM25 + dense + RRF + tiered LLM escalation.
+            # Tier overridable via env for A/B testing (default: "filter").
+            tier = os.environ.get("COGITO_EVAL_HYBRID_TIER", "filter")
+            resp, latency = _post(
+                base_url, "/recall_hybrid",
+                {"text": case.query, "limit": limit, "tier": tier},
+                timeout=60,
+            )
+            memories = resp.get("memories", [])
+            r = _score_result(case, memories, "", "E", latency)
+
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
@@ -370,6 +382,7 @@ MODE_LABELS = {
     "B": "snapshot + recall",
     "C": "recall only",
     "D": "recall_b only",
+    "E": "recall_hybrid",
 }
 
 
@@ -528,7 +541,7 @@ def main():
     parser.add_argument("--static-only", action="store_true",
                         help="Skip dynamic case generation")
     parser.add_argument("--modes", default="A,B,C,D",
-                        help="Comma-separated modes to run (default: A,B,C,D)")
+                        help="Comma-separated modes to run (default: A,B,C,D; add E for /recall_hybrid)")
     parser.add_argument("--limit", type=int, default=50,
                         help="Candidate limit for /recall and /recall_b (default: 50)")
     parser.add_argument("--seed", type=int, default=42, help="RNG seed for dynamic cases")

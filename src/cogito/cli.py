@@ -78,6 +78,20 @@ def cmd_recall(args):
     _print_memories(result.get("memories", []), result.get("method", ""))
 
 
+def cmd_recall_hybrid(args):
+    payload = {
+        "text": args.query,
+        "limit": args.limit,
+        "tier": args.tier,
+        "top_k": args.top_k,
+    }
+    result = _post("/recall_hybrid", payload)
+    if args.raw:
+        print(json.dumps(result, indent=2))
+        return
+    _print_memories(result.get("memories", []), result.get("method", ""))
+
+
 def cmd_query(args):
     result = _post("/query", {"text": args.query, "limit": args.limit})
     if args.raw:
@@ -180,6 +194,21 @@ def main():
     p_recall.add_argument("--threshold", type=float, default=400.0)
     p_recall.add_argument("--raw", action="store_true")
     p_recall.set_defaults(func=cmd_recall)
+
+    # recall-hybrid (BM25 + dense + RRF + tiered LLM)
+    p_hybrid = sub.add_parser(
+        "recall-hybrid",
+        help="Hybrid BM25+dense+RRF recall with tiered LLM escalation (93.4% R@1 architecture)",
+    )
+    p_hybrid.add_argument("query")
+    p_hybrid.add_argument("--limit", type=int, default=50)
+    p_hybrid.add_argument(
+        "--tier", choices=["zero_llm", "filter", "flagship"], default="filter",
+        help="Escalation tier: zero_llm | filter (default) | flagship",
+    )
+    p_hybrid.add_argument("--top-k", type=int, default=5, help="Candidates shown to reranker")
+    p_hybrid.add_argument("--raw", action="store_true")
+    p_hybrid.set_defaults(func=cmd_recall_hybrid)
 
     # query
     p_query = sub.add_parser("query", help="Simple vector query (no filter)")

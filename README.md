@@ -1,6 +1,10 @@
 # cogito-ergo
 
-Two-stage memory retrieval for AI agents. **85% R@1, 96% hit@any** on 31 test cases. The filter LLM outputs only integers — it structurally cannot corrupt, rephrase, or hallucinate into the content returned to your agent.
+Memory retrieval for AI agents with structural fidelity. **85% R@1** on the
+internal 31-case eval, **93.4% R@1** on LongMemEval_S (hybrid tier, see
+[Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s)).
+The filter LLM outputs only integers — it structurally cannot corrupt,
+rephrase, or hallucinate into the content returned to your agent.
 
 [![PyPI version](https://img.shields.io/pypi/v/cogito-ergo)](https://pypi.org/project/cogito-ergo/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/cogito-ergo/)
@@ -146,6 +150,117 @@ curl -X POST http://127.0.0.1:19420/recall \
 
 ---
 
+## Hybrid recall (93.4% R@1 on LongMemEval_S)
+
+`recall_hybrid` is an opt-in retrieval path that ports the architecture
+benchmarked at **93.4% R@1 on LongMemEval_S** (from a 56% mem0 baseline). It
+stays in the same integer-pointer fidelity contract as `/recall` — only
+indices cross the LLM boundary.
+
+```
+Query
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Stage 1 — hybrid retrieval (zero-LLM)                          │
+│   • sub-query decomposition + vocab expansion (recall_b logic) │
+│   • dense retrieval with nomic search_query: / search_document:│
+│     prefixes                                                    │
+│   • BM25 over the candidate pool (bm25s, optional extra)       │
+│   • Reciprocal Rank Fusion across runs                         │
+│   • cosine-blended rerank against the original query           │
+└───────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Router (regex classifier)                                      │
+│   • "you told me" / "you said"  → skip (keep Stage 1)          │
+│   • "how many" / "what date"    → call cheap filter            │
+│   • everything else             → keep Stage 1 at filter tier  │
+└───────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Stage 2 — cheap filter  (tier="filter", default)               │
+│   500-char snippets, integer-pointer output                    │
+└───────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌───────────────────────────────────────────────────────────────┐
+│ Stage 3 — flagship rerank  (tier="flagship", opt-in)           │
+│   2000-char snippets, stronger model, integer output           │
+│   Called when Stage 1 confidence is low or filter failed       │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Tier tradeoffs
+
+| Tier | Latency | R@1 (LongMemEval_S) | External calls | When to use |
+|---|---|---|---|---|
+| `zero_llm` | ~500ms | — | none | latency-sensitive paths, cost-sensitive ops |
+| `filter` | ~1300ms | 90%+ | cheap filter LLM | default; temporal/counting queries benefit |
+| `flagship` | ~3500ms | **93.4%** | filter + flagship model | hard queries, long sessions, benchmark setup |
+
+### Quick start
+
+```bash
+# Optional dependency for best BM25 fusion (zero deps fallback if absent)
+pip install cogito-ergo[hybrid]
+
+# Opt-in: set a filter endpoint (any OpenAI-compatible API)
+export COGITO_FILTER_ENDPOINT=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+export COGITO_FILTER_TOKEN=sk-your-key
+export COGITO_FILTER_MODEL=qwen-turbo
+
+# Optional: flagship tier (stronger model, 4x larger context window)
+export COGITO_FLAGSHIP_ENDPOINT=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+export COGITO_FLAGSHIP_TOKEN=sk-your-key
+export COGITO_FLAGSHIP_MODEL=qwen-max
+# Or simpler — if DASHSCOPE_API_KEY is set, the flagship tier auto-configures
+export DASHSCOPE_API_KEY=sk-your-key
+
+cogito recall-hybrid "auth architecture decisions" --tier filter
+```
+
+HTTP:
+
+```bash
+curl -X POST http://127.0.0.1:19420/recall_hybrid \
+  -H "Content-Type: application/json" \
+  -d '{"text": "how many auth migrations have we done", "tier": "flagship", "limit": 10}'
+```
+
+Python:
+
+```python
+from cogito.recall_hybrid import recall_hybrid
+from cogito.config import load, mem0_config
+from mem0 import Memory
+
+cfg = load()
+mem = Memory.from_config(mem0_config(cfg))
+hits, method = recall_hybrid(mem, "auth tokens", user_id="agent", cfg=cfg, tier="filter")
+```
+
+Graceful degradation: if the filter endpoint isn't configured, `tier="filter"`
+falls back to `zero_llm`. If the flagship endpoint isn't configured,
+`tier="flagship"` falls back to `filter` (which itself may degrade to
+`zero_llm`). Nothing raises on missing credentials.
+
+### Regression notice
+
+The hybrid path was validated at **93.4% R@1 on LongMemEval_S** (multi-turn
+dialog retrieval with turn-level chunking and session-date scaffolds).
+**On the internal 31-case eval** (which measures keyword-recall over a mem0
+store of short atomic memories), `/recall_hybrid` scores lower on R@1 than
+the existing `/recall` path — they solve slightly different problems. The
+hybrid path wins on hit@any, semantic-gap queries, and multi-memory
+aggregation; the existing path wins on prefix-style direct lookup. Default
+behavior is unchanged — `/recall` still drives `cogito recall`. Use
+`/recall_hybrid` or `cogito recall-hybrid` when you need the hybrid trait.
+
+---
+
 ## HTTP API
 
 All endpoints return JSON. Server runs on port `19420` by default.
@@ -224,6 +339,33 @@ Response:
 
 ---
 
+### `POST /recall_hybrid`
+
+Hybrid BM25 + dense + RRF retrieval with tiered LLM escalation. Port of
+the architecture that reached **93.4% R@1 on LongMemEval_S**. See
+[Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s) for the full
+diagram and tradeoffs.
+
+Request:
+```json
+{"text": "query string", "limit": 50, "tier": "filter", "top_k": 5}
+```
+
+`tier` is one of `"zero_llm"`, `"filter"` (default), `"flagship"`.
+`top_k` is how many candidates the reranker sees (default 5).
+
+Response:
+```json
+{"memories": [{"text": "...", "score": 0.72}], "method": "hybrid_12_bm25|filter"}
+```
+
+`method` field encodes the path taken (e.g. `"hybrid_24_bm25|default_s1"` =
+Stage 1 order kept; `"hybrid_12_bm25|filter"` = cheap filter reranked;
+`"hybrid_8_bm25|filter|flagship"` = both reranks ran; `"hybrid_6_nobm25_v|…"`
+= bm25s not installed, vocab expansion active).
+
+---
+
 ### `POST /store`
 
 Write one memory verbatim. No extraction LLM. Agent decides the content.
@@ -268,6 +410,8 @@ All CLI commands talk to the running HTTP server.
 |---|---|
 | `cogito recall "query"` | Two-stage recall via running server |
 | `cogito recall "query" --limit 50 --raw` | Raw JSON output |
+| `cogito recall-hybrid "query" --tier filter` | Hybrid BM25+dense+RRF recall (93.4% R@1 arch) |
+| `cogito recall-hybrid "query" --tier flagship --top-k 5` | + flagship escalation on hard queries |
 | `cogito query "query"` | Simple vector query, no filter |
 | `cogito add "text"` | Add a memory via /add (mem0 extraction) |
 | `cogito seed ~/notes/` | Bulk-seed from markdown files via /store |
@@ -309,6 +453,12 @@ Config file is searched at `./.cogito.json` (cwd) then `~/.cogito/config.json`.
 | `COGITO_RECALL_LIMIT` | `recall_limit` | `50` | Candidate pool size for /recall and /recall_b |
 | `COGITO_RECALL_THRESHOLD` | `recall_threshold` | `400.0` | L2 cutoff for /recall candidates |
 | `COGITO_QUERY_THRESHOLD` | `query_threshold` | `250.0` | L2 cutoff for /query results |
+| `COGITO_FLAGSHIP_ENDPOINT` | `flagship_endpoint` | — | OpenAI-compatible base URL for flagship rerank (recall_hybrid tier="flagship") |
+| `COGITO_FLAGSHIP_TOKEN` | `flagship_token` | — | Bearer token for flagship endpoint |
+| `COGITO_FLAGSHIP_MODEL` | `flagship_model` | — | Flagship model name (e.g. `qwen-max`) |
+| `COGITO_FLAGSHIP_TIMEOUT_MS` | `flagship_timeout_ms` | `30000` | Flagship LLM timeout in ms |
+| `DASHSCOPE_API_KEY` | — | — | If set, recall_hybrid auto-configures flagship to DashScope qwen-max |
+| `COGITO_HYBRID_COSINE_WEIGHT` | `hybrid_cosine_weight` | `0.7` | Cosine vs RRF blend weight for hybrid retrieval (0..1) |
 
 `filter_endpoint` accepts any OpenAI-compatible API: Anthropic gateway, LM Studio, Ollama's `/v1` compat layer, OpenClaw, etc.
 
@@ -321,13 +471,14 @@ For Ollama qwen3/qwen3.5 models used as filter, cogito automatically switches to
 ```python
 from cogito.recall import recall
 from cogito.recall_b import recall_b
+from cogito.recall_hybrid import recall_hybrid
 from cogito.config import load, mem0_config
 from mem0 import Memory
 
 cfg = load()  # reads .cogito.json + env vars
 memory = Memory.from_config(mem0_config(cfg))
 
-# Two-stage recall (recommended)
+# Two-stage recall (recommended default)
 memories, method = recall(memory, "auth architecture", user_id=cfg["user_id"], cfg=cfg)
 for m in memories:
     print(m["text"])  # verbatim stored text, never rephrased
@@ -335,7 +486,13 @@ for m in memories:
 # Zero-LLM recall (fast path)
 memories, method = recall_b(memory, "auth architecture", user_id=cfg["user_id"], cfg=cfg)
 
-print(method)  # e.g. "filter" or "decompose_4_v"
+# Hybrid recall (BM25 + dense + RRF + tiered LLM; 93.4% R@1 on LongMemEval_S)
+memories, method = recall_hybrid(
+    memory, "auth architecture", user_id=cfg["user_id"], cfg=cfg,
+    tier="filter",  # "zero_llm" | "filter" | "flagship"
+)
+
+print(method)  # e.g. "filter", "decompose_4_v", "hybrid_12_bm25|filter"
 ```
 
 ---

@@ -49,6 +49,13 @@ _DEFAULTS: dict[str, Any] = {
     "query_threshold": 250.0,
     "filter_model": "anthropic/claude-haiku-4-5",
     "filter_timeout_ms": 12000,
+    # Flagship tier (optional; used by recall_hybrid when tier="flagship")
+    "flagship_endpoint": "",
+    "flagship_token": "",
+    "flagship_model": "",
+    "flagship_timeout_ms": 30000,
+    # Hybrid retrieval tuning (see cogito.recall_hybrid)
+    "hybrid_cosine_weight": 0.7,
     "store_path": str(Path.home() / ".cogito" / "store"),
     "collection": "cogito_memory",
     "ollama_url": "http://localhost:11434",
@@ -70,6 +77,12 @@ _ENV_MAP = {
     "COGITO_FILTER_TOKEN": ("filter_token", str),
     "COGITO_FILTER_MODEL": ("filter_model", str),
     "COGITO_FILTER_TIMEOUT_MS": ("filter_timeout_ms", int),
+    # Flagship tier (see cogito.recall_hybrid)
+    "COGITO_FLAGSHIP_ENDPOINT": ("flagship_endpoint", str),
+    "COGITO_FLAGSHIP_TOKEN": ("flagship_token", str),
+    "COGITO_FLAGSHIP_MODEL": ("flagship_model", str),
+    "COGITO_FLAGSHIP_TIMEOUT_MS": ("flagship_timeout_ms", int),
+    "COGITO_HYBRID_COSINE_WEIGHT": ("hybrid_cosine_weight", float),
     "COGITO_STORE_PATH": ("store_path", str),
     "COGITO_COLLECTION": ("collection", str),
     "COGITO_OLLAMA_URL": ("ollama_url", str),

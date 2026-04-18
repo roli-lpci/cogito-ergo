@@ -66,8 +66,9 @@ Base URL: `http://127.0.0.1:19420` (default)
 |---|---|---|
 | `/health` | GET | Check server status, memory count, calibration state |
 | `/snapshot` | GET | Get compressed index (~741 tokens) for context injection |
-| `/recall` | POST | Two-stage retrieval (recommended for accuracy) |
+| `/recall` | POST | Two-stage retrieval (recommended default for accuracy) |
 | `/recall_b` | POST | Zero-LLM retrieval (recommended for speed) |
+| `/recall_hybrid` | POST | BM25+dense+RRF with tiered LLM escalation (93.4% R@1 on LongMemEval_S; opt-in) |
 | `/query` | POST | Simple vector search (narrow, no filter) |
 | `/store` | POST | Write verbatim memory (preferred write path) |
 | `/add` | POST | Write via mem0 extraction LLM (for raw/unstructured text) |
@@ -75,22 +76,24 @@ Base URL: `http://127.0.0.1:19420` (default)
 ### Request shapes
 
 ```json
-POST /recall    {"text": "query", "limit": 50, "threshold": 400}
-POST /recall_b  {"text": "query", "limit": 50}
-POST /query     {"text": "query", "limit": 5}
-POST /store     {"text": "verbatim text to store", "id": "<optional uuid>"}
-POST /add       {"text": "raw unstructured text for extraction"}
+POST /recall          {"text": "query", "limit": 50, "threshold": 400}
+POST /recall_b        {"text": "query", "limit": 50}
+POST /recall_hybrid   {"text": "query", "limit": 50, "tier": "filter", "top_k": 5}
+POST /query           {"text": "query", "limit": 5}
+POST /store           {"text": "verbatim text to store", "id": "<optional uuid>"}
+POST /add             {"text": "raw unstructured text for extraction"}
 ```
 
 ### Response shapes
 
 ```json
-/recall    → {"memories": [{"text": "...", "score": 93.4}], "method": "filter"}
-/recall_b  → {"memories": [{"text": "...", "score": 0.016}], "method": "decompose_4_v"}
-/query     → {"memories": [{"text": "...", "score": 93.4}]}
-/store     → {"id": "abc123", "text": "..."}
-/add       → {"count": 3, "memories": ["fact 1", "fact 2", "fact 3"]}
-/health    → {"status": "ok", "count": 1484, "version": "0.2.0", "calibrated": true, "snapshot": true}
+/recall         → {"memories": [{"text": "...", "score": 93.4}], "method": "filter"}
+/recall_b       → {"memories": [{"text": "...", "score": 0.016}], "method": "decompose_4_v"}
+/recall_hybrid  → {"memories": [{"text": "...", "score": 0.72}], "method": "hybrid_12_bm25|filter"}
+/query          → {"memories": [{"text": "...", "score": 93.4}]}
+/store          → {"id": "abc123", "text": "..."}
+/add            → {"count": 3, "memories": ["fact 1", "fact 2", "fact 3"]}
+/health         → {"status": "ok", "count": 1484, "version": "0.3.0", "calibrated": true, "snapshot": true}
 ```
 
 ### Method field meanings

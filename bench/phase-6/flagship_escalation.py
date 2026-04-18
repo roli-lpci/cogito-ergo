@@ -6,6 +6,7 @@ NOT wired into pipeline yet. Call manually or swap in when ready.
 """
 
 import json
+import os
 import urllib.request
 
 DASHSCOPE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
