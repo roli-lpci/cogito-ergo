@@ -1,0 +1,102 @@
+{
+  "benchmark": "LongMemEval",
+  "split": "S",
+  "date": "2026-04-18",
+  "test": "combined_pipeline_v34",
+  "modifications": [
+    "temporal_boost_stage1",
+    "s8_socratic_scaffold_single",
+    "runtime_escalation_no_hardset"
+  ],
+  "engine": "BM25+turn-level+prefixes \u2192 temporal-boost \u2192 runtime-escalate \u2192 s8-socratic (qwen-turbo)",
+  "filter_model": "qwen-turbo",
+  "filter_top_k": 5,
+  "questions_evaluated": 470,
+  "integrity": {
+    "hardset_removed": true,
+    "escalation_rule": "top1<0.65 or gap<0.03",
+    "escalation_fired_count": 118
+  },
+  "stage1_metrics": {
+    "recall_any": {
+      "R@1": 0.832,
+      "R@3": 0.951,
+      "R@5": 0.983,
+      "R@10": 0.991
+    }
+  },
+  "stage1b_metrics": {
+    "recall_any": {
+      "R@1": 0.832,
+      "R@5": 0.983
+    }
+  },
+  "stage2_metrics": {
+    "recall_any": {
+      "R@1": 0.923,
+      "R@3": 0.974,
+      "R@5": 0.983,
+      "R@10": 0.991
+    },
+    "recall_all": {
+      "R@1": 0.326,
+      "R@3": 0.796,
+      "R@5": 0.851,
+      "R@10": 0.938
+    },
+    "ndcg": {
+      "R@1": 0.923,
+      "R@3": 0.911,
+      "R@5": 0.915,
+      "R@10": 0.931
+    }
+  },
+  "qtype_breakdown": {
+    "knowledge-update": {
+      "n": 72,
+      "r1": 0.958,
+      "delta_vs_runc": "-1.4%"
+    },
+    "multi-session": {
+      "n": 121,
+      "r1": 0.959,
+      "delta_vs_runc": "-2.5%"
+    },
+    "single-session-assistant": {
+      "n": 56,
+      "r1": 1.0,
+      "delta_vs_runc": "+1.8%"
+    },
+    "single-session-preference": {
+      "n": 30,
+      "r1": 0.667,
+      "delta_vs_runc": "-20.0%"
+    },
+    "single-session-user": {
+      "n": 64,
+      "r1": 0.984,
+      "delta_vs_runc": "-1.6%"
+    },
+    "temporal-reasoning": {
+      "n": 127,
+      "r1": 0.866,
+      "delta_vs_runc": "+1.6%"
+    }
+  },
+  "vs_runc_guard": -0.0166,
+  "vs_mastra": -0.0253,
+  "temporal_boost_fired_count": 90,
+  "socratic_fired_count": 145,
+  "escalation_fired_count": 118,
+  "filter_methods": {
+    "default_s1": 170,
+    "llm": 126,
+    "flagship_runtime": 54,
+    "llm_guarded_s1": 19,
+    "flagship_llm_runtime": 60,
+    "skip": 41
+  },
+  "avg_retrieval_ms": 199,
+  "avg_filter_ms": 946,
+  "total_time_s": 538.4
+}
