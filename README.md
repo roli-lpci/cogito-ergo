@@ -28,6 +28,44 @@ layer) — purpose-built for short-fact lookup, not session retrieval.
 
 ---
 
+## How this is different from mem0 / Zep / Letta
+
+Short version: **they call an LLM during retrieval; cogito doesn't.**
+
+| | mem0 / Zep / Letta (typical) | cogito-ergo (zero-LLM default) |
+|---|---|---|
+| LLM call on retrieval hot path | yes | **no** |
+| Cost per retrieval | ~$0.001–0.02 | **$0** |
+| Latency | ~1–3 s | **~90 ms** |
+| Works fully offline / air-gapped | no (cloud LLM required for headline numbers) | **yes** (local Ollama) |
+| API keys required to run | yes | **no** |
+| R@1 on LongMemEval_S | 92–96% (cloud LLM tier) | 83.2% (zero-LLM) |
+| LLM can rephrase / hallucinate into returned content | yes | **no** (integer-pointer contract on optional LLM tier) |
+| Write survives upstream LLM outage | mixed | **yes** (degrade queue) |
+
+Your agent already calls an LLM. cogito feeds that LLM the right memory
+without adding a second LLM call to retrieve it.
+
+### Where this matters (and where it doesn't)
+
+**Use cogito when:**
+- You can't send memory contents to a third-party LLM (compliance, legal, healthcare, defense, regulated finance).
+- You need per-query cost to be zero at scale.
+- You need sub-100 ms retrieval.
+- You want fidelity by construction — memory text is verbatim, not LLM-paraphrased.
+
+**Use mem0 / Zep / Letta when:**
+- You need the highest possible benchmark accuracy and cost isn't a constraint.
+- Temporal reasoning and preference-ranking queries dominate your workload (cogito's weakest categories at 66–67% zero-LLM).
+- You're fine with a cloud LLM dependency in the memory layer.
+
+The LLM tier is available (`tier="filter"` / `tier="flagship"`) if you want
+to opt in to benchmark-parity mode. It's labeled experimental until the
+calibration miss (80% escalation vs 10% intended) is fixed — see
+[Known limitations](#when-to-enable-the-optional-llm-tier).
+
+---
+
 ## The Problem
 
 Every retrieval system that uses an LLM to select or rank memories has the same failure mode: the LLM rephrases on the way out. You store `"auth tokens expire after 3600 seconds"` and get back `"authentication has a configurable timeout."` The specific fact is gone.
