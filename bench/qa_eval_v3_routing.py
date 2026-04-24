@@ -155,6 +155,29 @@ _QA_SYS_TEMPORAL = (
     "Off-by-one is forgiven for day counts."
 )
 
+# E3 temporal prompt: fixes the 'today reference' error found in E2.
+# 83% of E2 TR wrong answers used training cutoff or hallucinated 'today'.
+_QA_SYS_TEMPORAL_V2 = (
+    "You are answering a temporal-reasoning question about a person's conversation history.\n"
+    "Procedure:\n"
+    "1. Scan ALL sessions for date headers in 'YYYY/MM/DD' format and relevant events.\n"
+    "2. List ALL relevant dates and events in chronological order.\n"
+    "3. Quote each relevant passage with its date header.\n"
+    "4. Perform the arithmetic: count days/weeks/months, compare order, compute durations.\n"
+    "   Show your calculation step by step (e.g., 'From 2024-01-05 to 2024-01-20 = 15 days').\n"
+    "5. Give a direct numeric or ordinal answer on a line starting with 'Answer:'.\n"
+    "Guidance: Dates appear in session headers as 'YYYY/MM/DD (Day)'. "
+    "If computing days between dates, use calendar arithmetic. "
+    "Off-by-one is forgiven for day counts.\n"
+    "CRITICAL — Reference date rule: This is a static conversation history, not a live system. "
+    "There is NO external 'today' date and you must NOT use your training cutoff date. "
+    "For questions asking 'how many days ago', 'how long ago', or similar elapsed-time questions: "
+    "BOTH the event asked about AND the reference point must appear as session dates in the conversation. "
+    "Find both events, quote their session dates, and compute the difference between those dates only. "
+    "Do NOT compute 'from event X to today' — instead compute 'from event X to event Y' "
+    "where Y is the reference event or anchor date stated or implied in the question."
+)
+
 _QA_SYS_PREFERENCE = (
     "You are answering a recommendation question using a person's stated preferences.\n"
     "Procedure:\n"
@@ -210,13 +233,16 @@ _QA_SYS_MULTI_V2 = (
 )
 
 
-def get_qa_system_prompt(qtype: str, use_v3_multi: bool = False) -> str:
+def get_qa_system_prompt(
+    qtype: str, use_v3_multi: bool = False, use_v3_temporal: bool = False
+) -> str:
     """
     Default uses v2 prompts for safety (v3 MS prompt regressed -11.9pp on gpt-4o-mini in E1).
     use_v3_multi=True enables the enhanced v3 MS prompt (may be better for GPT-4o).
+    use_v3_temporal=True enables the E3 temporal prompt that fixes the today-reference error.
     """
     if qtype == 'temporal-reasoning':
-        return _QA_SYS_TEMPORAL   # v3 temporal (enhanced date math — not tested alone, use for GPT-4o)
+        return _QA_SYS_TEMPORAL_V2 if use_v3_temporal else _QA_SYS_TEMPORAL
     if qtype == 'single-session-preference':
         return _QA_SYS_PREFERENCE
     if qtype == 'knowledge-update':
@@ -390,6 +416,9 @@ def main():
     parser.add_argument("--v3-multi-prompt", action="store_true",
                         help="Use v3 enhanced MS synthesis prompt (default: v2, safer for mini; "
                              "v3 regressed -11.9pp in E1; may be better for GPT-4o)")
+    parser.add_argument("--v3-temporal-prompt", action="store_true",
+                        help="Use v3 temporal prompt with today-reference fix (E3). "
+                             "Fixes 83%% of E2 TR errors caused by GPT-4o using training cutoff as today.")
     parser.add_argument("--rate-limit-delay", type=float, default=0.3,
                         help="Seconds to sleep between API calls (default 0.3 to avoid rate limits)")
     parser.add_argument("--max-answer-tokens", type=int, default=512,
@@ -513,7 +542,9 @@ def main():
         if len(session_text) > 100_000:
             session_text = session_text[:100_000] + "\n[... truncated ...]"
 
-        system = get_qa_system_prompt(qtype, use_v3_multi=args.v3_multi_prompt)
+        system = get_qa_system_prompt(
+            qtype, use_v3_multi=args.v3_multi_prompt, use_v3_temporal=args.v3_temporal_prompt
+        )
         user_prompt = (f"Question: {question}\n\nConversation:\n{session_text}\n\n"
                        "Follow the procedure. Quote first, then answer.")
 
