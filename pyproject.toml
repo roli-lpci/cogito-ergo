@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cogito-ergo"
-version = "0.3.0"
-description = "Memory retrieval for AI agents — integer-pointer fidelity guarantee, 93.4% R@1 on LongMemEval_S (hybrid tier). By Hermes Labs."
+version = "0.3.1"
+description = "Agent memory retrieval — zero-LLM default (83.2% R@1, $0/query, fully local on LongMemEval_S), integer-pointer fidelity on the optional LLM tier. By Hermes Labs."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
@@ -21,7 +21,6 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
 ]
 dependencies = [

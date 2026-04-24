@@ -1,12 +1,25 @@
 # cogito-ergo
 
-Memory retrieval for AI agents with structural fidelity. Two purpose-built paths:
-the existing `/recall` scores **85% R@1** on cogito's internal 31-case atomic-fact
-eval; the new `/recall_hybrid` tier scores **93.4% R@1** on LongMemEval_S
-(session-retrieval benchmark, see [Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s)).
-Different workloads, different tools. The filter LLM outputs only integers — it
-structurally cannot corrupt, rephrase, or hallucinate into the content returned
-to your agent.
+Agent memory retrieval with **zero-LLM defaults**. Fully local. No API keys
+required to get a working system.
+
+**Headline numbers (zero-LLM tier, the v0.3.1 default):**
+
+- **83.2% R@1** on LongMemEval_S (470 questions) — pure retrieval, no LLM
+- **$0/query** — BM25 + dense + RRF only, runs on local Ollama
+- **~90 ms latency** end-to-end
+- **100% on single-session-assistant** / 96% knowledge-update / 95% single-session-user
+- **R@5 = 94–100% across all categories** — the gold answer is in the top-5 even on hard queries
+
+The architectural fidelity contract holds: when the optional LLM tier is
+enabled, the filter outputs only integer pointers — it structurally cannot
+corrupt, rephrase, or hallucinate into the content returned to your agent.
+See [Hybrid recall](#hybrid-recall) for the tier table and the honest
+ceiling on the benchmark-tuned path.
+
+There is also a separate `/recall` atomic path: 75% R@1 on cogito's
+internal 31-case atomic-fact eval (85% combined with the snapshot
+layer) — purpose-built for short-fact lookup, not session retrieval.
 
 [![PyPI version](https://img.shields.io/pypi/v/cogito-ergo)](https://pypi.org/project/cogito-ergo/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://pypi.org/project/cogito-ergo/)
@@ -152,12 +165,56 @@ curl -X POST http://127.0.0.1:19420/recall \
 
 ---
 
-## Hybrid recall (93.4% R@1 on LongMemEval_S)
+## Hybrid recall
 
-`recall_hybrid` is an opt-in retrieval path that ports the architecture
-benchmarked at **93.4% R@1 on LongMemEval_S** (from a 56% mem0 baseline). It
-stays in the same integer-pointer fidelity contract as `/recall` — only
-indices cross the LLM boundary.
+`recall_hybrid` is the session-retrieval path. Three tiers, one contract:
+
+| Tier | Default? | R@1 on LongMemEval_S | Cost/query | Latency |
+|---|---|---|---|---|
+| `zero_llm` | **yes (v0.3.1 default)** | **83.2%** | **$0** | ~90 ms |
+| `filter` | no | ~92% (runO-v34) | ~$0.002–0.003 | ~1.3 s |
+| `flagship` | no | 96.4% (runP-v35, 2026-04-18) | higher, see below | ~3.5 s |
+
+The **zero-LLM tier is the production recommendation.** It's the one
+shipped by default and the one we stand behind as battle-ready.
+
+The **filter and flagship tiers are benchmark-tuned and experimental.**
+They ported the architecture that reached 96.4% on LongMemEval_S, but that
+run escalates to flagship on ~80% of queries vs the 10% the threshold
+was designed for — an 8× cost miss we're transparent about in STATUS.md
+and in the `Known limitations` section below. Use them to replicate the
+benchmark or for one-off hard-query lookups; do not base a production
+cost model on them yet.
+
+All three tiers stay in the same integer-pointer fidelity contract as
+`/recall` — only indices cross the LLM boundary.
+
+### Per-category zero-LLM breakdown (LongMemEval_S, 470 q)
+
+| Category | n | Zero-LLM R@1 | Zero-LLM R@5 | Ceiling (flagship) |
+|---|---|---|---|---|
+| single-session-assistant | 56 | **100%** | 100% | 98.2% (regresses) |
+| knowledge-update | 72 | **96%** | 100% | 98.6% |
+| single-session-user | 64 | **95%** | 100% | 100% |
+| multi-session | 121 | 83% | 100% | 99.2% |
+| single-session-preference | 30 | 67% | 97% | 86.7% |
+| temporal-reasoning | 127 | 66% | 94% | 92.1% |
+| **Blended** | **470** | **83.2%** | — | 96.4% |
+
+**Read this honestly:** the zero-LLM tier is near-perfect on single-session
+queries and knowledge-update. It craters on temporal-reasoning and
+preference. The LLM tier buys +26pp on TR and +20pp on Pref — at the cost
+of 80% escalation rate in the current calibration. If your workload is
+session-scoped or fact-like, stay zero-LLM. If it's temporal-heavy, enable
+the filter tier and budget for it.
+
+### When to enable the optional LLM tier
+
+- Your workload has **temporal-reasoning queries** ("what did we discuss before the release?").
+- You need **preference-ranking** between multiple near-matches.
+- You're **replicating the benchmark**, not running production.
+
+Otherwise: zero-LLM default is the answer. It's why this repo exists.
 
 ```
 Query
@@ -201,7 +258,7 @@ Query
 |---|---|---|---|---|
 | `zero_llm` | ~500ms | — | none | latency-sensitive paths, cost-sensitive ops |
 | `filter` | ~1300ms | 90%+ | cheap filter LLM | default; temporal/counting queries benefit |
-| `flagship` | ~3500ms | **93.4%** | filter + flagship model | hard queries, long sessions, benchmark setup |
+| `flagship` | ~3500ms | **96.4%** | filter + flagship model | hard queries, long sessions, benchmark setup |
 
 ### Quick start
 
@@ -251,12 +308,12 @@ falls back to `zero_llm`. If the flagship endpoint isn't configured,
 
 ### Regression notice
 
-The hybrid path was validated at **93.4% R@1 on LongMemEval_S** (multi-turn
-dialog retrieval with turn-level chunking and session-date scaffolds).
-**On the internal 31-case eval** (which measures keyword-recall over a mem0
-store of short atomic memories), `/recall_hybrid` scores lower on R@1 than
-the existing `/recall` path — they solve slightly different problems. The
-hybrid path wins on hit@any, semantic-gap queries, and multi-memory
+The hybrid path was validated at **96.4% R@1 on LongMemEval_S** (470 questions,
+runP-v35, 2026-04-18; multi-turn dialog retrieval with turn-level chunking and
+session-date scaffolds). **On the internal 31-case eval** (which measures
+keyword-recall over a store of short atomic facts), `/recall_hybrid` scores
+lower on R@1 than the existing `/recall` path — they solve different problems.
+The hybrid path wins on hit@any, semantic-gap queries, and multi-memory
 aggregation; the existing path wins on prefix-style direct lookup. Default
 behavior is unchanged — `/recall` still drives `cogito recall`. Use
 `/recall_hybrid` or `cogito recall-hybrid` when you need the hybrid trait.
@@ -269,7 +326,7 @@ behavior is unchanged — `/recall` still drives `cogito recall`. Use
 cogito-ergo v0.3.0 can ingest your Claude Code sessions and query them with the
 same turn-pair chunking used in the LongMemEval benchmark.
 
-**Why it matters:** The 93.4% R@1 benchmark result requires role-structured session
+**Why it matters:** The 96.4% R@1 benchmark result requires role-structured session
 data (user+assistant turn pairs). Flat atomic memories don't have this structure.
 Claude Code stores every session as role-structured JSONL — wiring it to cogito
 uses the same retrieval architecture as the benchmark, though Claude Code sessions
@@ -355,7 +412,7 @@ Request:
 
 Response:
 ```json
-{"memories": [{"text": "...", "score": 93.4}]}
+{"memories": [{"text": "...", "score": 0.87}]}
 ```
 
 ---
@@ -371,7 +428,7 @@ Request:
 
 Response:
 ```json
-{"memories": [{"text": "...", "score": 93.4}], "method": "filter"}
+{"memories": [{"text": "...", "score": 0.87}], "method": "filter"}
 ```
 
 `method` field: `"filter"` = filter ran successfully; `"fallback_*"` = graceful degradation, all candidates returned instead. Possible fallbacks: `fallback_no_endpoint`, `fallback_unreachable`, `fallback_parse_error`, `fallback_error`.
@@ -399,8 +456,8 @@ Response:
 ### `POST /recall_hybrid`
 
 Hybrid BM25 + dense + RRF retrieval with tiered LLM escalation. Port of
-the architecture that reached **93.4% R@1 on LongMemEval_S**. See
-[Hybrid recall](#hybrid-recall-9334-r1-on-longmemeval_s) for the full
+the architecture that reached **96.4% R@1 on LongMemEval_S**. See
+[Hybrid recall](#hybrid-recall-964-r1-on-longmemeval_s) for the full
 diagram and tradeoffs.
 
 Request:
@@ -467,7 +524,7 @@ All CLI commands talk to the running HTTP server.
 |---|---|
 | `cogito recall "query"` | Two-stage recall via running server |
 | `cogito recall "query" --limit 50 --raw` | Raw JSON output |
-| `cogito recall-hybrid "query" --tier filter` | Hybrid BM25+dense+RRF recall (93.4% R@1 arch) |
+| `cogito recall-hybrid "query" --tier filter` | Hybrid BM25+dense+RRF recall (96.4% R@1 arch) |
 | `cogito recall-hybrid "query" --tier flagship --top-k 5` | + flagship escalation on hard queries |
 | `cogito query "query"` | Simple vector query, no filter |
 | `cogito add "text"` | Add a memory via /add (mem0 extraction) |
@@ -543,7 +600,7 @@ for m in memories:
 # Zero-LLM recall (fast path)
 memories, method = recall_b(memory, "auth architecture", user_id=cfg["user_id"], cfg=cfg)
 
-# Hybrid recall (BM25 + dense + RRF + tiered LLM; 93.4% R@1 on LongMemEval_S)
+# Hybrid recall (BM25 + dense + RRF + tiered LLM; 96.4% R@1 on LongMemEval_S)
 memories, method = recall_hybrid(
     memory, "auth architecture", user_id=cfg["user_id"], cfg=cfg,
     tier="filter",  # "zero_llm" | "filter" | "flagship"

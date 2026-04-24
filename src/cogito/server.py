@@ -16,8 +16,9 @@ Endpoints:
   POST /recall_hybrid  {"text": "...", "limit": 50, "tier": "filter", "top_k": 5}
        → {"memories": [...], "method": "hybrid_*|..."}
        BM25 + dense + RRF + tiered LLM escalation.
-       tier is one of: "zero_llm" | "filter" (default) | "flagship".
-       Opt-in production port of the 93.4% LongMemEval_S pipeline.
+       tier is one of: "zero_llm" (default, 83.2% R@1, $0/query) | "filter"
+       (benchmark-tuned, experimental) | "flagship" (benchmark-tuned, 96.4%
+       R@1 but escalates ~80% — see docs/RELEASE-SCOPE.md).
 
   POST /store   {"text": "...", "id": "<optional uuid>"}
        → {"id": "...", "text": "..."}
@@ -42,12 +43,11 @@ import argparse
 import json
 import os
 import sys
-import uuid
-from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
-from pathlib import Path
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from cogito import __version__
 from cogito.config import load, mem0_config
+from cogito.degrade import queued_count, safe_add
 from cogito.recall import recall as do_recall
 from cogito.recall_b import recall_b as do_recall_b
 from cogito.recall_hybrid import recall_hybrid as do_recall_hybrid
@@ -152,9 +152,10 @@ def make_handler(memory: object, cfg: dict) -> type:
                         self._json({"memories": [], "method": "empty_query"})
                         return
                     limit = int(data.get("limit", cfg.get("recall_limit", 50)))
+                    since = data.get("since")
                     memories, method = do_recall(
                         memory, text, user_id=user_id, cfg=cfg,
-                        limit=limit,
+                        limit=limit, since=since,
                     )
                     print(f"[cogito] /recall '{text[:50]}' → {len(memories)} results ({method})", flush=True)
                     self._json({"memories": memories, "method": method})
@@ -174,13 +175,14 @@ def make_handler(memory: object, cfg: dict) -> type:
 
                 elif self.path == "/recall_hybrid":
                     # BM25 + dense + RRF + tiered LLM escalation.
-                    # Opt-in production port of the 93.4% LongMemEval_S pipeline.
+                    # Default tier: zero_llm (83.2% R@1 at $0, production moat).
+                    # Opt-in filter/flagship for benchmark replication.
                     text = data.get("text", "")
                     if not text or len(text.strip()) < 3:
                         self._json({"memories": [], "method": "empty_query"})
                         return
                     limit = int(data.get("limit", cfg.get("recall_limit", 50)))
-                    tier = data.get("tier", "filter")
+                    tier = data.get("tier", "zero_llm")
                     top_k = int(data.get("top_k", 5))
                     if tier not in ("zero_llm", "filter", "flagship"):
                         self._json({"error": f"invalid tier: {tier}"}, 400)
@@ -194,33 +196,35 @@ def make_handler(memory: object, cfg: dict) -> type:
 
                 elif self.path == "/store":
                     # Verbatim write — agent decides content, no extraction LLM.
+                    # Uses safe_add: queues locally if dependency (Ollama) is down.
                     text = data.get("text", "")
                     if not text or len(text.strip()) < 3:
                         self._json({"error": "no text"}, 400)
                         return
-                    mem_id = data.get("id") or str(uuid.uuid4())
-                    try:
-                        vector = memory.embedding_model.embed(text)  # type: ignore
-                        memory.vector_store.insert(  # type: ignore
-                            vectors=[vector],
-                            payloads=[{"data": text, "user_id": user_id}],
-                            ids=[mem_id],
-                        )
-                        self._json({"id": mem_id, "text": text})
-                    except Exception as e:
-                        self._json({"error": str(e)}, 500)
+                    result = safe_add(memory, text, user_id, kind="store")  # type: ignore
+                    self._json({**result, "queued_total": queued_count()})
 
                 elif self.path == "/add":
+                    # Uses safe_add: queues locally if Ollama is unreachable.
                     text = data.get("text", "")
                     if not text:
                         self._json({"error": "no text"}, 400)
                         return
-                    result = memory.add(text, user_id=user_id)  # type: ignore
-                    extracted = result.get("results", [])
-                    self._json({
-                        "count": len(extracted),
-                        "memories": [m.get("memory", "") for m in extracted],
-                    })
+                    result = safe_add(memory, text, user_id, kind="add")  # type: ignore
+                    if result["status"] == "queued":
+                        self._json({
+                            "status": "queued",
+                            "id": result["id"],
+                            "reason": result["reason"],
+                            "queued_total": queued_count(),
+                        }, 202)  # 202 Accepted: write deferred
+                    else:
+                        extracted = result.get("extracted", [])
+                        self._json({
+                            "status": "stored",
+                            "count": len(extracted),
+                            "memories": extracted,
+                        })
 
                 else:
                     self._json({"error": "not found"}, 404)
@@ -243,7 +247,7 @@ def main():
 
     src = cfg.get("_config_file", "defaults + env")
     print(f"[cogito] Starting server v{__version__} (config: {src})", flush=True)
-    print(f"[cogito] Loading memory store...", flush=True)
+    print("[cogito] Loading memory store...", flush=True)
 
     memory = _boot(cfg)
 

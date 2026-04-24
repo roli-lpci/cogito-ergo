@@ -36,12 +36,14 @@ def recall(
     user_id: str,
     cfg: dict[str, Any],
     limit: int | None = None,
+    since: str | None = None,
 ) -> tuple[list[dict], str]:
     """
     Run two-stage recall. Returns (memories, method).
 
-    memories: list of {"text": str, "score": float}
-    method:   "filter" | "fallback_*" | "<stage1_method>|<fallback>"
+    memories: list of {"text": str, "score": float, "created_at": str (optional)}
+    method:   "filter" | "fallback_*" | "<stage1_method>|<fallback>" (may include "|since_filter" if since is applied)
+    since:    ISO 8601 date string to filter memories created after this date
     """
     limit = limit or cfg.get("recall_limit", 50)
 
@@ -59,6 +61,13 @@ def recall(
 
     # Stage 2 — integer-pointer filter
     selected, filter_method = _filter(query, candidates, cfg)
+
+    # Stage 3 — optional timestamp filter
+    if since and selected:
+        selected, since_applied = _filter_by_since(selected, since)
+        if since_applied:
+            filter_method = f"{filter_method}|since_filter" if filter_method != "filter" else "since_filter"
+
     # Method tag: just "filter" when clean, compound when fallback
     method = f"{stage1_method}|{filter_method}" if filter_method != "filter" else "filter"
     return selected, method
@@ -225,6 +234,51 @@ def _parse_indices(raw: str, candidates: list[dict]) -> tuple[list[dict], str]:
             selected.append(candidates[idx - 1])
 
     return selected, "filter"
+
+
+def _filter_by_since(
+    memories: list[dict],
+    since: str,
+) -> tuple[list[dict], bool]:
+    """
+    Filter memories to only include those created on or after 'since' date.
+    since: ISO 8601 date string (e.g., "2026-04-01" or "2026-04-01T12:00:00Z").
+
+    Returns (filtered_memories, was_filter_applied).
+    was_filter_applied=False if no memories have created_at field or if date parsing fails.
+    """
+
+    try:
+        since_dt = _parse_iso_date(since)
+    except ValueError:
+        return memories, False
+
+    filtered = []
+    for m in memories:
+        created_at = m.get("created_at")
+        if not created_at:
+            continue
+        try:
+            mem_dt = _parse_iso_date(created_at)
+            if mem_dt >= since_dt:
+                filtered.append(m)
+        except ValueError:
+            continue
+
+    return filtered if filtered else memories, len(filtered) > 0
+
+
+def _parse_iso_date(date_str: str) -> object:
+    """Parse ISO 8601 date string to datetime object."""
+    from datetime import datetime
+
+    date_str = date_str.strip()
+    for fmt in ["%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"]:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Invalid date format: {date_str}")
 
 
 def _resolve_filter_endpoint(cfg: dict[str, Any]) -> tuple[str, str]:

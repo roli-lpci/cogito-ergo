@@ -1,9 +1,14 @@
 """
-recall_hybrid — BM25 + dense + RRF retrieval with tiered LLM escalation.
+recall_hybrid — BM25 + dense + RRF retrieval with optional tiered LLM escalation.
 
-This is the production port of the architecture that reached 93.4% R@1 on
-LongMemEval_S in benchmarking (up from 56% baseline). See
-``bench/longmemeval_combined_pipeline_flagship.py`` for the reference pipeline.
+Default tier is ``zero_llm`` (83.2% R@1 on LongMemEval_S, $0/query, ~90 ms,
+fully local). The LLM tiers (``filter`` and ``flagship``) are benchmark-tuned
+and opt-in: they port the architecture that reached 96.4% R@1 at flagship
+tier (runP-v35, 2026-04-18, 470 questions) but currently escalate on ~80%
+of queries versus the 10% the threshold was designed for — see
+``docs/RELEASE-SCOPE.md`` and ``docs/THRESHOLD-AUDIT.md``. Use the LLM
+tiers for benchmark replication or hard-query lookups; do not base a
+production cost model on them yet.
 
 Adaptation to production data shape
 -----------------------------------
@@ -524,13 +529,14 @@ def recall_hybrid(
     user_id: str,
     cfg: dict[str, Any],
     limit: int | None = None,
-    tier: str = "filter",
+    tier: str = "zero_llm",
     top_k: int | None = None,
 ) -> tuple[list[dict], str]:
-    """BM25 + dense + RRF hybrid recall with tiered LLM escalation.
+    """BM25 + dense + RRF hybrid recall with optional tiered LLM escalation.
 
-    This is the production port of the architecture that reached 93.4% R@1
-    on LongMemEval_S. It routes by query type, fuses BM25 and dense
+    Default tier is ``zero_llm`` (83.2% R@1 on LongMemEval_S at $0/query).
+    The ``filter`` and ``flagship`` tiers are benchmark-tuned and experimental.
+    It routes by query type, fuses BM25 and dense
     retrieval with RRF, and optionally reranks the top candidates through
     a cheap filter LLM or a flagship cloud model.
 

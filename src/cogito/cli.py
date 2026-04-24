@@ -67,11 +67,14 @@ def _print_memories(memories: list, method: str = ""):
 
 
 def cmd_recall(args):
-    result = _post("/recall", {
+    payload = {
         "text": args.query,
         "limit": args.limit,
         "threshold": args.threshold,
-    })
+    }
+    if args.since:
+        payload["since"] = args.since
+    result = _post("/recall", payload)
     if args.raw:
         print(json.dumps(result, indent=2))
         return
@@ -192,19 +195,20 @@ def main():
     p_recall.add_argument("query")
     p_recall.add_argument("--limit", type=int, default=50)
     p_recall.add_argument("--threshold", type=float, default=400.0)
+    p_recall.add_argument("--since", help="ISO 8601 date string to filter memories created after this date (e.g., 2026-04-01)")
     p_recall.add_argument("--raw", action="store_true")
     p_recall.set_defaults(func=cmd_recall)
 
     # recall-hybrid (BM25 + dense + RRF + tiered LLM)
     p_hybrid = sub.add_parser(
         "recall-hybrid",
-        help="Hybrid BM25+dense+RRF recall with tiered LLM escalation (93.4%% R@1 architecture)",
+        help="Hybrid BM25+dense+RRF recall. Zero-LLM default (83.2%% R@1); opt-in LLM tiers for benchmark replication.",
     )
     p_hybrid.add_argument("query")
     p_hybrid.add_argument("--limit", type=int, default=50)
     p_hybrid.add_argument(
-        "--tier", choices=["zero_llm", "filter", "flagship"], default="filter",
-        help="Escalation tier: zero_llm | filter (default) | flagship",
+        "--tier", choices=["zero_llm", "filter", "flagship"], default="zero_llm",
+        help="Retrieval tier: zero_llm (default, 83.2%% R@1, $0) | filter (benchmark-tuned) | flagship",
     )
     p_hybrid.add_argument("--top-k", type=int, default=5, help="Candidates shown to reranker")
     p_hybrid.add_argument("--raw", action="store_true")

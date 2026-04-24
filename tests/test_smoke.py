@@ -4,7 +4,7 @@ Smoke tests — no Ollama, no ChromaDB, no network required.
 
 import pytest
 from cogito.config import load
-from cogito.recall import _parse_indices
+from cogito.recall import _parse_indices, _filter_by_since, _parse_iso_date
 from cogito.recall_b import _build_subqueries, _rrf_merge
 
 
@@ -187,3 +187,75 @@ def test_rrf_merge_skips_empty_text():
     result = _rrf_merge(runs, limit=10)
     assert len(result) == 1
     assert result[0]["text"] == "valid"
+
+
+# ---------------------------------------------------------------------------
+# _parse_iso_date
+# ---------------------------------------------------------------------------
+
+def test_parse_iso_date_iso_format():
+    dt = _parse_iso_date("2026-04-22T10:30:00Z")
+    assert dt.year == 2026
+    assert dt.month == 4
+    assert dt.day == 22
+
+
+def test_parse_iso_date_date_only():
+    dt = _parse_iso_date("2026-04-22")
+    assert dt.year == 2026
+    assert dt.month == 4
+    assert dt.day == 22
+
+
+def test_parse_iso_date_invalid():
+    with pytest.raises(ValueError):
+        _parse_iso_date("not-a-date")
+
+
+# ---------------------------------------------------------------------------
+# _filter_by_since
+# ---------------------------------------------------------------------------
+
+MEMORIES_WITH_DATES = [
+    {"text": "old fact", "score": 1.0, "created_at": "2026-04-20"},
+    {"text": "recent fact", "score": 2.0, "created_at": "2026-04-22"},
+    {"text": "future fact", "score": 3.0, "created_at": "2026-04-23"},
+]
+
+
+def test_filter_by_since_basic():
+    result, applied = _filter_by_since(MEMORIES_WITH_DATES, "2026-04-21")
+    assert applied is True
+    assert len(result) == 2
+    assert result[0]["text"] == "recent fact"
+    assert result[1]["text"] == "future fact"
+
+
+def test_filter_by_since_exact_date():
+    result, applied = _filter_by_since(MEMORIES_WITH_DATES, "2026-04-22")
+    assert applied is True
+    assert len(result) == 2
+    assert result[0]["text"] == "recent fact"
+
+
+def test_filter_by_since_no_matches():
+    result, applied = _filter_by_since(MEMORIES_WITH_DATES, "2026-04-25")
+    assert applied is False
+    assert result == MEMORIES_WITH_DATES
+
+
+def test_filter_by_since_invalid_date():
+    result, applied = _filter_by_since(MEMORIES_WITH_DATES, "invalid-date")
+    assert applied is False
+    assert result == MEMORIES_WITH_DATES
+
+
+def test_filter_by_since_missing_created_at():
+    memories = [
+        {"text": "has date", "score": 1.0, "created_at": "2026-04-22"},
+        {"text": "no date", "score": 2.0},
+    ]
+    result, applied = _filter_by_since(memories, "2026-04-21")
+    assert applied is True
+    assert len(result) == 1
+    assert result[0]["text"] == "has date"
