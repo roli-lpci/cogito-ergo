@@ -1,0 +1,49 @@
+{
+  "experiment_id": "E1",
+  "run_id": "runP-v35",
+  "start_ts": "2026-04-23T23:48:03.434816+00:00",
+  "end_ts": "2026-04-24T01:03:13.051406+00:00",
+  "n_questions": 109,
+  "overall_qa_accuracy": 0.578,
+  "qtype_filter": [
+    "multi-session"
+  ],
+  "k_routing": {
+    "single-session-user": 1,
+    "single-session-assistant": 1,
+    "single-session-preference": 1,
+    "multi-session": 5,
+    "temporal-reasoning": 5,
+    "knowledge-update": 1
+  },
+  "model_routing": {
+    "single-session-user": "gpt-4o-mini",
+    "single-session-assistant": "gpt-4o-mini",
+    "single-session-preference": "gpt-4o-mini",
+    "multi-session": "gpt-4o-mini",
+    "temporal-reasoning": "gpt-4o-mini",
+    "knowledge-update": "gpt-4o-mini"
+  },
+  "grader_model": "gpt-4o-mini",
+  "qtype_qa_accuracy": {
+    "multi-session": {
+      "n": 109,
+      "qa_accuracy": 0.578,
+      "qa_correct": 63,
+      "k": 5,
+      "reader_model": "gpt-4o-mini"
+    }
+  },
+  "conditional": {
+    "retrieval_hit_n": 108,
+    "retrieval_miss_n": 1,
+    "qa_acc_given_retrieval_hit": 0.5741,
+    "qa_acc_given_retrieval_miss": 1.0
+  },
+  "cost": {
+    "total_usd": 0.259,
+    "total_input_tokens": 1544098,
+    "total_output_tokens": 45649,
+    "pricing_note": "gpt-4o-mini=$0.15/$0.60 per 1M in/out; gpt-4o=$2.50/$10.00 per 1M in/out (Feb 2026)"
+  }
+}
