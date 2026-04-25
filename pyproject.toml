@@ -40,10 +40,10 @@ fidelis-scaffold = "fidelis.scaffold_server:main"
 
 [project.urls]
 Homepage = "https://hermes-labs.ai"
-Repository = "https://github.com/roli-lpci/fidelis"
-Documentation = "https://github.com/roli-lpci/fidelis#readme"
-Issues = "https://github.com/roli-lpci/fidelis/issues"
-Changelog = "https://github.com/roli-lpci/fidelis/blob/main/CHANGELOG.md"
+Repository = "https://github.com/hermes-labs-ai/fidelis"
+Documentation = "https://github.com/hermes-labs-ai/fidelis#readme"
+Issues = "https://github.com/hermes-labs-ai/fidelis/issues"
+Changelog = "https://github.com/hermes-labs-ai/fidelis/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fidelis"]
