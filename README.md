@@ -1,9 +1,18 @@
 # fidelis
 
+> **⚠️ Alpha (v0.0.5).** First release under the `fidelis` name (renamed
+> from `cogito-ergo`). API surface is stable for the zero-LLM default path
+> but **expect breaking changes** on the LLM tiers and config until 0.1.x.
+> See [`docs/RELEASE-SCOPE.md`](docs/RELEASE-SCOPE.md) for what's in / held
+> for later, and what's measured vs unmeasured.
+>
+> **What's measured today:** retrieval R@1 on LongMemEval_S.
+> **Not yet measured:** end-to-end QA accuracy on the zero-LLM tier; real-world workloads outside LongMemEval; cost-comparison vs mem0/Zep/Letta at fixed accuracy.
+
 Agent memory retrieval with **zero-LLM defaults**. Fully local. No API keys
 required to get a working system.
 
-**Headline numbers (zero-LLM tier, the v0.0.8 default):**
+**Headline numbers (zero-LLM tier, the v0.0.5 default):**
 
 - **83.2% R@1** on LongMemEval_S (470 questions) — pure retrieval, no LLM
 - **$0/query** — BM25 + dense + RRF only, runs on local Ollama
