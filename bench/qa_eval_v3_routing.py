@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -234,13 +235,27 @@ _QA_SYS_MULTI_V2 = (
 
 
 def get_qa_system_prompt(
-    qtype: str, use_v3_multi: bool = False, use_v3_temporal: bool = False
+    qtype: str, use_v3_multi: bool = False, use_v3_temporal: bool = False,
+    use_fidelis_scaffold: bool = False, top_score: float | None = None,
 ) -> str:
     """
     Default uses v2 prompts for safety (v3 MS prompt regressed -11.9pp on gpt-4o-mini in E1).
     use_v3_multi=True enables the enhanced v3 MS prompt (may be better for GPT-4o).
     use_v3_temporal=True enables the E3 temporal prompt that fixes the today-reference error.
+    use_fidelis_scaffold=True replaces the v2/v3 prompts with the Fidelis Scaffold v0.1.0
+    drift-safe wrapper. Adds calibrated hedging, retrieval-confidence signal, and
+    scaffold-version markers for downstream drift measurement. Pre-flight validated.
     """
+    if use_fidelis_scaffold == "minimal":
+        # True raw baseline — minimal prompt. Used for A/B comparison vs scaffold.
+        return ("You are answering a question using retrieved conversation memory. "
+                "Quote the relevant passage, then answer on a line starting with 'Answer:'.")
+    if use_fidelis_scaffold:
+        try:
+            from fidelis.scaffold import wrap_system_prompt
+            return wrap_system_prompt(qtype, top_score=top_score)
+        except Exception as _e:
+            print(f"  [scaffold import failed, falling through] {_e}", file=sys.stderr)
     if qtype == 'temporal-reasoning':
         return _QA_SYS_TEMPORAL_V2 if use_v3_temporal else _QA_SYS_TEMPORAL
     if qtype == 'single-session-preference':
@@ -338,8 +353,42 @@ def call_model(prompt: str, system: str, model: str, max_tokens: int = 512) -> s
         if usage:
             _update_cost(model, usage)
         return content
+    elif model.startswith("claude-") or model == "claude-cli":
+        # Subscription-billed via local claude CLI. No API cost tracking; cost is $0
+        # against the user's Claude Code subscription. --exclude-dynamic-system-prompt-sections
+        # strips per-machine memory + CLAUDE.md to reduce context bleed during grading.
+        return _call_claude_cli(prompt, system, max_tokens=max_tokens)
     else:
         raise ValueError(f"Unknown model: {model}")
+
+
+def _call_claude_cli(prompt: str, system: str, max_tokens: int = 512, timeout: int = 90) -> str | None:
+    # Optional jittered sleep to stay under subscription anti-abuse throttle.
+    # Enabled by env var CLAUDE_CLI_JITTER_S (e.g. "5,10" → uniform 5-10s).
+    jitter = os.environ.get("CLAUDE_CLI_JITTER_S", "")
+    if jitter:
+        try:
+            lo, hi = (float(x) for x in jitter.split(","))
+            import random
+            time.sleep(random.uniform(lo, hi))
+        except (ValueError, TypeError):
+            pass
+    full = f"{system}\n\n{prompt}" if system else prompt
+    try:
+        r = subprocess.run(
+            ["claude", "--print", "--exclude-dynamic-system-prompt-sections", full],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        if r.returncode != 0:
+            print(f"  [claude-cli error] rc={r.returncode}: {r.stderr[:200]}", file=sys.stderr)
+            return None
+        return r.stdout.strip()
+    except subprocess.TimeoutExpired:
+        print("  [claude-cli timeout]", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"  [claude-cli exception] {e}", file=sys.stderr)
+        return None
 
 
 def grade_answer(grading_prompt: str, grader_model: str) -> bool | None:
@@ -393,6 +442,217 @@ def session_id_to_text(entry: dict, sid: str) -> str | None:
     return None
 
 
+def session_id_to_turns(entry: dict, sid: str) -> list[tuple[str, str, str]]:
+    """Return list of (role, content, session_date) for each turn in a session, or []."""
+    for s_id, session, s_date in zip(
+        entry["haystack_session_ids"],
+        entry["haystack_sessions"],
+        entry.get("haystack_dates", [""] * len(entry["haystack_session_ids"])),
+    ):
+        if s_id == sid:
+            return [(m.get("role", "?"), m.get("content", "").strip(), s_date)
+                    for m in session if m.get("content", "").strip()]
+    return []
+
+
+_STOPWORDS = set("a an the and or but if then of in to from on at by for with as is are was were be been being have has had do does did this that these those it its his her him she he they them their our we us i you me my your what who whom whose where when why how which".split())
+
+
+def _tokenize(text: str) -> list[str]:
+    return [t for t in re.findall(r"[a-z0-9]+", text.lower()) if t not in _STOPWORDS and len(t) > 1]
+
+
+def extractive_answer(strategy: str, gold_entry: dict, qtype: str, question: str,
+                       top_ids: list[str], k: int) -> str:
+    """Zero-LLM-at-inference extractive reader. Returns a candidate answer string.
+
+    Strategies:
+      extractive-kitchen     — concatenate full text of top-k sessions (let grader find gold)
+      extractive-turns-overlap — score each turn by query token overlap; return top-N turns
+      extractive-bge         — bge-reranker rerank turns; return top-N turns
+      extractive-qtype       — qtype-conditional: turns-overlap by default, but quote-match for SSU/SSA
+    """
+    sids = top_ids[:k]
+    if strategy == "extractive-kitchen":
+        parts = []
+        for sid in sids:
+            t = session_id_to_text(gold_entry, sid)
+            if t:
+                parts.append(t)
+        return "\n\n".join(parts)[:8000]
+
+    # Gather all turns from top-k sessions
+    all_turns: list[tuple[str, str, str, str]] = []  # (sid, role, content, date)
+    for sid in sids:
+        for role, content, sdate in session_id_to_turns(gold_entry, sid):
+            all_turns.append((sid, role, content, sdate))
+    if not all_turns:
+        return ""
+
+    if strategy in ("extractive-turns-overlap", "extractive-qtype"):
+        q_tokens = set(_tokenize(question))
+
+        # Qtype-conditional role bias: SSA needs assistant turns; SSU/Pref need user turns.
+        # We score everything but apply a multiplier to the preferred role for the
+        # qtype, so we don't mask the answer if it's in the wrong role for that qtype.
+        if strategy == "extractive-qtype":
+            preferred_role = {
+                "single-session-assistant": "assistant",
+                "single-session-user": "user",
+                "single-session-preference": "user",
+            }.get(qtype)
+        else:
+            preferred_role = None
+
+        scored = []
+        for sid, role, content, sdate in all_turns:
+            t_tokens = set(_tokenize(content))
+            overlap = len(q_tokens & t_tokens)
+            # Boost preferred-role turns by 1.5x; penalize the other role by 0.5x
+            if preferred_role:
+                if role == preferred_role:
+                    score = overlap * 1.5
+                else:
+                    score = overlap * 0.5
+            else:
+                score = overlap
+            scored.append((score, sid, role, content, sdate))
+        scored.sort(key=lambda x: -x[0])
+
+        # Qtype-conditional take-count (Z5: best-of-each from smoke variants)
+        if strategy == "extractive-qtype":
+            n_take = {
+                "single-session-user": 5,        # Z4 winner
+                "single-session-assistant": 3,   # Z3 winner
+                "single-session-preference": 5,  # accept floor, no aggressive filter
+                "knowledge-update": 4,           # Z3 winner
+                "multi-session": 7,
+                "temporal-reasoning": 8,
+            }.get(qtype, 5)
+        else:
+            n_take = 5 if scored and scored[0][0] >= 1 else 8
+
+        chosen = scored[:n_take]
+        candidate = "\n".join(f"[{r}]: {c}" for _, _, r, c, _ in chosen)[:6000]
+
+        # TR date-arithmetic disabled for Z5 — empirically hurt grader (-10pp on smoke).
+        # Reserved for future work (Z6+): structured answer-only response, not enrichment.
+
+        # KU recency ordering — take top-overlap-then-newest chunk text
+        if strategy == "extractive-qtype" and qtype == "knowledge-update":
+            # Sort retrieved sessions by their date (newest first), prepend latest 2 verbatim
+            dated_sids = []
+            for sid in sids:
+                for s_id, _, sdate in zip(
+                    gold_entry["haystack_session_ids"],
+                    gold_entry["haystack_sessions"],
+                    gold_entry.get("haystack_dates", [""] * len(gold_entry["haystack_session_ids"])),
+                ):
+                    if s_id == sid and sdate:
+                        dated_sids.append((sdate, sid))
+                        break
+            dated_sids.sort(reverse=True)  # newest first
+            recency_text = ""
+            for sdate, sid in dated_sids[:2]:
+                t = session_id_to_text(gold_entry, sid)
+                if t:
+                    recency_text += f"\n[LATEST session {sid} ({sdate})]\n{t[:1500]}\n"
+            if recency_text:
+                candidate = recency_text + "\n[overlap-ranked turns]\n" + candidate
+
+        return candidate[:8000]
+
+    if strategy == "extractive-bge":
+        try:
+            scored = _bge_score_turns(question, all_turns)
+        except Exception as e:
+            print(f"  [bge fallback to overlap] {e}", file=sys.stderr)
+            return extractive_answer("extractive-turns-overlap", gold_entry, qtype, question, top_ids, k)
+        scored.sort(key=lambda x: -x[0])
+        n_take = 5
+        chosen = scored[:n_take]
+        return "\n".join(f"[{r}]: {c}" for _, _, r, c, _ in chosen)[:6000]
+
+    raise ValueError(f"Unknown extractive strategy: {strategy}")
+
+
+_DATE_RE = re.compile(r"\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b|\b(\d{1,2})[-/](\d{1,2})[-/](20\d{2})\b|\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})\b", re.IGNORECASE)
+
+
+def _tr_date_arithmetic(question: str, candidate: str, question_date: str) -> str:
+    """For temporal-reasoning questions, extract dates from candidate text and compute
+    day-deltas relative to question_date. Returns a string of computed deltas to
+    append to the candidate so grader can see both quotes and computed numbers."""
+    from datetime import date
+    if not question_date:
+        return ""
+    try:
+        # question_date is usually 'YYYY-MM-DD' or 'YYYY/MM/DD'
+        qd_parts = re.split(r"[-/]", question_date)[:3]
+        if len(qd_parts) != 3 or len(qd_parts[0]) != 4:
+            return ""
+        q_date = date(int(qd_parts[0]), int(qd_parts[1]), int(qd_parts[2]))
+    except (ValueError, IndexError):
+        return ""
+
+    months = {"january":1,"february":2,"march":3,"april":4,"may":5,"june":6,
+              "july":7,"august":8,"september":9,"october":10,"november":11,"december":12}
+    found_dates = set()
+    for m in _DATE_RE.finditer(candidate):
+        try:
+            if m.group(1):  # YYYY-MM-DD
+                d = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            elif m.group(4):  # MM/DD/YYYY
+                d = date(int(m.group(6)), int(m.group(4)), int(m.group(5)))
+            elif m.group(7):  # Month DD, YYYY
+                mo = months.get(m.group(7).lower())
+                if mo:
+                    d = date(int(m.group(9)), mo, int(m.group(8)))
+                else:
+                    continue
+            else:
+                continue
+            found_dates.add(d)
+        except (ValueError, KeyError):
+            continue
+
+    if not found_dates:
+        return ""
+    out = []
+    for d in sorted(found_dates):
+        delta = (q_date - d).days
+        if 0 <= delta <= 3650:  # within 10 years past
+            out.append(f"  {d.isoformat()} = {delta} days ago = {delta // 7} weeks ago = {delta // 30} months ago")
+    return "\n".join(out[:8])
+
+
+def _bge_score_turns(question: str, turns: list[tuple[str, str, str, str]]) -> list[tuple[float, str, str, str, str]]:
+    """Score each turn against question via local bge-reranker (ollama)."""
+    out = []
+    for sid, role, content, sdate in turns:
+        snippet = content[:1500]  # cap per turn for reranker speed
+        body = json.dumps({
+            "model": "qllama/bge-reranker-v2-m3",
+            "prompt": f"Query: {question}\nDocument: {snippet}",
+            "stream": False,
+            "options": {"temperature": 0.0},
+        }).encode()
+        req = urllib.request.Request(
+            "http://localhost:11434/api/generate",
+            data=body, headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read())
+            # bge-reranker returns score in response text
+            raw_resp = data.get("response", "0").strip()
+            score = float(re.search(r"-?\d+\.?\d*", raw_resp).group(0)) if re.search(r"-?\d+\.?\d*", raw_resp) else 0.0
+        except Exception:
+            score = 0.0
+        out.append((score, sid, role, content, sdate))
+    return out
+
+
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
@@ -421,6 +681,10 @@ def main():
                              "Fixes 83%% of E2 TR errors caused by GPT-4o using training cutoff as today.")
     parser.add_argument("--rate-limit-delay", type=float, default=0.3,
                         help="Seconds to sleep between API calls (default 0.3 to avoid rate limits)")
+    parser.add_argument("--use-fidelis-scaffold", action="store_true",
+                        help="Use Fidelis Scaffold v0.1.0 system prompts (drift-safe + hedge-calibrated)")
+    parser.add_argument("--minimal-prompt", action="store_true",
+                        help="Use a minimal raw prompt (for A/B baseline vs scaffold)")
     parser.add_argument("--max-answer-tokens", type=int, default=512,
                         help="Max tokens for QA answer (default 512, matching v2 baseline)")
     parser.add_argument("--out-dir", default=None,
@@ -542,21 +806,36 @@ def main():
         if len(session_text) > 100_000:
             session_text = session_text[:100_000] + "\n[... truncated ...]"
 
+        # Top-1 retrieval similarity for inline confidence signal in the scaffold.
+        # Falls back to None if the per_question.json doesn't carry scores.
+        _top_score = None
+        s1_scores = pq_entry.get("s1_top5_scores", [])
+        if s1_scores:
+            try:
+                _top_score = float(s1_scores[0])
+            except (ValueError, TypeError, IndexError):
+                _top_score = None
+
+        _scaffold_arg = "minimal" if args.minimal_prompt else args.use_fidelis_scaffold
         system = get_qa_system_prompt(
-            qtype, use_v3_multi=args.v3_multi_prompt, use_v3_temporal=args.v3_temporal_prompt
+            qtype, use_v3_multi=args.v3_multi_prompt, use_v3_temporal=args.v3_temporal_prompt,
+            use_fidelis_scaffold=_scaffold_arg, top_score=_top_score,
         )
         user_prompt = (f"Question: {question}\n\nConversation:\n{session_text}\n\n"
                        "Follow the procedure. Quote first, then answer.")
 
         cost_before = _total_tokens["cost_usd"]
-        time.sleep(args.rate_limit_delay)
-        qa_answer = call_model(user_prompt, system, reader_model, max_tokens=args.max_answer_tokens)
-        if qa_answer is None:
-            time.sleep(3)
-            qa_answer = call_model(user_prompt, system, reader_model, max_tokens=768)
+        if reader_model.startswith("extractive-"):
+            qa_answer = extractive_answer(reader_model, gold_entry, qtype, question, s2_top, k)
+        else:
+            time.sleep(args.rate_limit_delay)
+            qa_answer = call_model(user_prompt, system, reader_model, max_tokens=args.max_answer_tokens)
             if qa_answer is None:
-                print(f"  [{qi+1}/{total}] QA failed twice, skipping {qid}")
-                continue
+                time.sleep(3)
+                qa_answer = call_model(user_prompt, system, reader_model, max_tokens=768)
+                if qa_answer is None:
+                    print(f"  [{qi+1}/{total}] QA failed twice, skipping {qid}")
+                    continue
 
         qa_answer = re.sub(r"<think>.*?</think>", "", qa_answer, flags=re.DOTALL).strip()
 

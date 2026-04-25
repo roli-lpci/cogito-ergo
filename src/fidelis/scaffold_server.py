@@ -32,7 +32,7 @@ from urllib.parse import parse_qs, urlparse
 
 from fidelis import __version__
 from fidelis.config import load
-from fidelis.scaffold import (
+from fidelis.lpci import (
     SessionState,
     apply_delta,
     extract_state_delta,
