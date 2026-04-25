@@ -25,7 +25,7 @@ class FakeMemory:
     def __init__(self, memories: list[str]):
         self._memories = memories
 
-    def search(self, query: str, user_id: str, limit: int) -> dict:
+    def search(self, query: str, *, filters: dict, top_k: int) -> dict:
         q_lower = query.lower()
         scored = []
         for m in self._memories:
@@ -35,7 +35,7 @@ class FakeMemory:
         return {
             "results": [
                 {"memory": m, "score": 100.0 - score}
-                for m, score in scored[:limit]
+                for m, score in scored[:top_k]
             ]
         }
 

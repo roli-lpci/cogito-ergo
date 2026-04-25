@@ -236,7 +236,7 @@ def _hybrid_stage1(
     # Per-sub-query ranked lists, for RRF downstream (by text)
     runs_by_text: list[list[str]] = []
     for sq in subqueries:
-        raw = memory.search(sq, user_id=user_id, limit=per_query_limit)
+        raw = memory.search(sq, filters={"user_id": user_id}, top_k=per_query_limit)
         run_texts: list[str] = []
         for r in raw.get("results", []):
             text = r.get("memory", "")

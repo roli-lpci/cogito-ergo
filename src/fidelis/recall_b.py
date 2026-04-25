@@ -314,7 +314,7 @@ def recall_b(
     runs: list[list[dict]] = []
 
     for sq in subqueries:
-        raw = memory.search(sq, user_id=user_id, limit=per_query_limit)
+        raw = memory.search(sq, filters={"user_id": user_id}, top_k=per_query_limit)
         candidates = [
             {"text": r.get("memory", ""), "score": round(r.get("score", 9999), 3)}
             for r in raw.get("results", [])

@@ -101,7 +101,7 @@ def make_handler(memory: object, cfg: dict) -> type:
                     try:
                         count = memory.vector_store.col.count()  # type: ignore
                     except Exception:
-                        result = memory.get_all(user_id=user_id, limit=10000)  # type: ignore
+                        result = memory.get_all(filters={"user_id": user_id}, top_k=10000)  # type: ignore
                         count = len(result.get("results", []))
                     snap_path = _snapshot_path(cfg)
                     self._json({
@@ -138,7 +138,7 @@ def make_handler(memory: object, cfg: dict) -> type:
                     if not text or len(text.strip()) < 3:
                         self._json({"memories": []})
                         return
-                    raw = memory.search(text, user_id=user_id, limit=limit)  # type: ignore
+                    raw = memory.search(text, filters={"user_id": user_id}, top_k=limit)  # type: ignore
                     memories = [
                         {"text": r["memory"], "score": round(r["score"], 3)}
                         for r in raw.get("results", [])

@@ -50,7 +50,7 @@ _SNAPSHOT_SYSTEM = (
 def _sample_memories(memory: Any, user_id: str, n: int) -> list[str]:
     """Fetch all memories and return up to n randomly sampled texts."""
     try:
-        raw = memory.get_all(user_id=user_id, limit=10000)  # type: ignore
+        raw = memory.get_all(filters={"user_id": user_id}, top_k=10000)  # type: ignore
         results = raw.get("results", [])
         texts = [r.get("memory", "") for r in results if r.get("memory")]
         if len(texts) > n:
