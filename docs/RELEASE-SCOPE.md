@@ -1,11 +1,11 @@
-# Release Scope — fidelis v0.0.8 (2026-04-24)
+# Release Scope — fidelis v0.0.5 (2026-04-24)
 
 First release under the `fidelis` name (renamed from `cogito-ergo`).
-Version reset to 0.0.8 because this is a new PyPI package.
+Version reset to 0.0.5 because this is a new PyPI package.
 Single source of truth for what this release ships, what it defers, and
 why. Honest; not aspirational.
 
-## In scope (v0.0.8)
+## In scope (v0.0.5)
 
 ### Rename
 - PyPI: `cogito-ergo` → `fidelis`; imports `from cogito` → `from fidelis`;
@@ -90,5 +90,5 @@ path; tier semantics may evolve for filter/flagship.
   README or marketing until that data exists.
 - No 96.4% headline. That number is preserved for flagship-tier
   documentation; it is not the released product's default.
-- No public push of this branch. `release/v0.0.8-zero-llm-first` is
+- No public push of this branch. `release/v0.0.5-zero-llm-first` is
   local-only until explicit approval.

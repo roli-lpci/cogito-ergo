@@ -1,10 +1,14 @@
 # Changelog
 
-## v0.0.8 — 2026-04-24 (renamed from `cogito-ergo`, first release as `fidelis`)
+# fidelis era
 
-**Package rename: `cogito-ergo` → `fidelis`.** Version reset to 0.0.8 for the
-new PyPI name. The old `cogito-ergo` 0.0.8 and 0.3.0 PyPI entries remain
-published but are now deprecated pointers to this package.
+## v0.0.5 — 2026-04-24 (first release as `fidelis`, renamed from `cogito-ergo`)
+
+**Package rename: `cogito-ergo` → `fidelis`.** Version reset for the new
+PyPI package. The old `cogito-ergo` PyPI entries (0.0.8 and 0.3.0) remain
+published but are now deprecated pointers to this package. Note: a prior
+`cogito-ergo` v0.0.5 also exists in the changelog below — these are
+**different packages**; the version numbers do not collide on PyPI.
 
 **Headline: zero-LLM is the default retrieval tier.** The repositioning
 reflects what the benchmark numbers actually show — the zero-LLM path is
@@ -67,6 +71,10 @@ benchmark-tuned and held as experimental until calibration is fixed.
 - `docs/THRESHOLD-AUDIT.md` — pins prod vs bench escalation constants.
 - `docs/RELEASE-SCOPE.md` — in-scope / held-for-later with unlock criteria.
 
+---
+
+# cogito-ergo era (predecessor package, retained for history)
+
 ## v0.3.0 — 2026-04-16
 
 - New `recall_hybrid` path: BM25 + dense + RRF with tiered LLM escalation.
@@ -89,7 +97,7 @@ benchmark-tuned and held as experimental until calibration is fixed.
 - Technical extraction prompt baked into default config (no external prompt file needed)
 - Qwen3/qwen3.5 support via native Ollama `/api/chat` with `think:false`
 
-## v0.0.8 — 2026-03-28
+## v0.0.5 — 2026-03-28
 
 - Fixed benchmark attribution: qwen3.5:2b filter model (not claude-haiku-4-5)
 - Added Hermes Labs PyPI metadata (author, homepage, keywords)
