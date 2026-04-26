@@ -260,8 +260,66 @@ def main():
     p_server = sub.add_parser("server", help="Start the cogito server")
     p_server.set_defaults(func=cmd_server)
 
+    # init — install + start fidelis-server as a system service
+    p_init = sub.add_parser(
+        "init",
+        help="Install + start fidelis-server as a launchd/systemd service (auto-starts on reboot)",
+    )
+    p_init.add_argument("--uninstall", action="store_true",
+                        help="Stop service + remove the unit/plist")
+    p_init.set_defaults(func=lambda a: sys.exit(_cmd_init(a)))
+
+    # watch — auto-ingest a directory
+    p_watch = sub.add_parser("watch", help="Auto-ingest markdown/text files from a directory")
+    p_watch.add_argument("path", help="Directory to watch")
+    p_watch.add_argument("--glob", nargs="+", default=None,
+                         help="Glob patterns (default: *.md *.txt)")
+    p_watch.add_argument("--max-files", type=int, default=500,
+                         help="Initial-scan cap (default: 500)")
+    p_watch.add_argument("--interval", type=float, default=5.0,
+                         help="Poll interval in seconds (default: 5.0)")
+    p_watch.add_argument("--once", action="store_true",
+                         help="Initial scan only, don't poll continuously")
+    p_watch.add_argument("--verbose", "-v", action="store_true")
+    p_watch.set_defaults(func=lambda a: sys.exit(_cmd_watch(a)))
+
+    # mcp — manage Claude Code MCP integration
+    p_mcp = sub.add_parser("mcp", help="Manage Claude Code MCP integration")
+    mcp_sub = p_mcp.add_subparsers(dest="mcp_command", required=True)
+    p_mcp_install = mcp_sub.add_parser("install", help="Install fidelis MCP server into ~/.claude/settings.local.json")
+    p_mcp_install.add_argument("--settings", help="Path to settings.local.json (default: ~/.claude/settings.local.json)")
+    p_mcp_install.add_argument("--force", action="store_true",
+                               help="Overwrite an existing 'fidelis' entry even if it doesn't look like ours")
+    p_mcp_install.set_defaults(func=lambda a: sys.exit(_cmd_mcp_install(a)))
+    p_mcp_uninstall = mcp_sub.add_parser("uninstall", help="Remove fidelis MCP server from settings")
+    p_mcp_uninstall.add_argument("--settings", help="Path to settings.local.json")
+    p_mcp_uninstall.set_defaults(func=lambda a: sys.exit(_cmd_mcp_uninstall(a)))
+
     args = parser.parse_args()
     args.func(args)
+
+
+# Lazy-imports for the new consumer-surface commands so the existing CLI startup
+# isn't slowed by importing platform-specific modules.
+
+def _cmd_init(args):
+    from fidelis.init_cmd import cmd_init
+    return cmd_init(args)
+
+
+def _cmd_watch(args):
+    from fidelis.watch_cmd import cmd_watch
+    return cmd_watch(args)
+
+
+def _cmd_mcp_install(args):
+    from fidelis.mcp_cmd import cmd_mcp_install
+    return cmd_mcp_install(args)
+
+
+def _cmd_mcp_uninstall(args):
+    from fidelis.mcp_cmd import cmd_mcp_uninstall
+    return cmd_mcp_uninstall(args)
 
 
 if __name__ == "__main__":

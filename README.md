@@ -1,10 +1,43 @@
 # fidelis
 
-> **v0.0.6 (2026-04-26).** Adds the **Fidelis Scaffold** — a 140–180-token
-> drift-safe, hedge-calibrated, qtype-aware system-prompt wrapper for
-> retrieval-augmented agent memory QA. Validated on Claude (Opus subscription)
-> and OpenAI-format APIs (gpt-oss:20b local) at 100/100 hedge + answer
-> compliance. 359 scaffold tests passing across 11 test files.
+> **v0.1.0 (2026-04-27).** Agent memory that's on by default. One command
+> starts the service, one command auto-ingests your notes, one command wires
+> Claude Code. 73% QA on LongMemEval-S, $0/q via Claude subscription, fully
+> local retrieval. **Validated on Claude + OpenAI-format APIs at 100/100
+> hedge + answer compliance. 383 tests passing.**
+
+## 60-second quickstart
+
+```bash
+pip install fidelis
+fidelis init                  # installs + starts the service (launchd/systemd)
+fidelis watch ~/notes         # auto-ingests markdown/text, polls for new files
+fidelis mcp install           # wires Claude Code MCP integration
+# Done. Restart Claude Code. Memory is on.
+```
+
+**What just happened:** fidelis-server runs in the background under your OS service manager, ingests `~/notes` continuously, and exposes recall as MCP tools to Claude Code. No API keys. No cloud LLM. The retrieval is fully local.
+
+**To use programmatically:**
+
+```python
+from fidelis.augment import augment
+from anthropic import Anthropic
+
+client = Anthropic()
+answer = augment(
+    question="What did I say about Sarah?",
+    qtype="single-session-user",
+    llm_call=lambda system, user: client.messages.create(
+        model="claude-opus-4-5",
+        system=system,
+        messages=[{"role": "user", "content": user}],
+        max_tokens=512,
+    ).content[0].text,
+)
+```
+
+`augment()` retrieves memory + wraps with the Fidelis Scaffold + invokes your LLM in one call.
 
 **Agent memory with zero-LLM retrieval and a $0-incremental-cost QA scaffold.** Fully local retrieval. No API keys required to get a working memory system.
 
