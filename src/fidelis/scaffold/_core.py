@@ -33,12 +33,35 @@ _HEDGE = (
 
 # Confidence signal — inline meta-information about retrieval quality.
 # Helps the LLM calibrate its confidence to actual retrieval quality.
-def _confidence_marker(top_score: float | None) -> str:
+
+import math as _math
+
+
+def _sanitize_top_score(top_score: float | None) -> float | None:
+    """Sanitize a raw retrieval score to [0, 1] or None.
+
+    Values outside [0, 1] are clamped; nan/inf/-inf are treated as None (unknown).
+    Accepts int 0/1 and bool (True/False) in addition to float.
+    """
     if top_score is None:
+        return None
+    try:
+        v = float(top_score)
+    except (TypeError, ValueError):
+        return None
+    if not _math.isfinite(v):
+        # nan, inf, -inf → unknown
+        return None
+    return max(0.0, min(1.0, v))
+
+
+def _confidence_marker(top_score: float | None) -> str:
+    score = _sanitize_top_score(top_score)
+    if score is None:
         return "[retrieval-quality: unknown]"
-    if top_score >= 0.7:
+    if score >= 0.7:
         return "[retrieval-quality: HIGH (top-1 similarity ≥ 0.7)]"
-    if top_score >= 0.5:
+    if score >= 0.5:
         return "[retrieval-quality: MEDIUM (top-1 similarity 0.5-0.7)]"
     return "[retrieval-quality: LOW (top-1 similarity < 0.5) — hedge if unclear]"
 

@@ -25,6 +25,26 @@ Add cases that cover real retrieval failures or regressions. Include the memory 
 - Formatter/linter: `ruff` (`pip install ruff`, then `ruff check .` and `ruff format .`)
 - Target: Python 3.10+
 
+## `top_score` input contract
+
+`wrap_system_prompt(qtype, top_score=...)` accepts any numeric value for `top_score`:
+
+| Input | Behaviour |
+|---|---|
+| `None` | Treated as unknown → `[retrieval-quality: unknown]` |
+| `float` in `[0, 1]` | Used as-is for confidence band selection |
+| `float` outside `[0, 1]` (e.g. `-0.5`, `1.5`) | **Clamped** silently to `[0, 1]` — no exception raised |
+| `nan` / `inf` / `-inf` | Treated as `None` → `[retrieval-quality: unknown]` |
+| `int` `0` / `1` | Coerced to `float 0.0` / `1.0` |
+| `bool` `True` / `False` | Coerced to `1.0` / `0.0` (Python bool subclasses int) |
+
+Rationale: retrieval backends may return cosine values fractionally outside `[0, 1]` due to float
+arithmetic, or `nan`/`inf` on degenerate inputs. The scaffold uses `top_score` only for a
+cosmetic confidence label, so clamping is the principle-of-least-surprise choice — it never
+raises and never breaks the caller's pipeline.
+
+See `tests/scaffold/test_top_score_contract.py` for the full contract test suite.
+
 ## Pull requests
 
 1. Fork and branch from `main`.

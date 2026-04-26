@@ -43,10 +43,13 @@ _FORBIDDEN_TOKENS = [
     r"\[/INST\]",
 ]
 
-# Approximate token counter for length checks (4 chars ≈ 1 token rule of thumb;
-# stricter would require a real tokenizer per provider).
+# Approximate token counter for length checks. Uses 3.5 chars/token (not 4) to
+# stay conservative vs real cl100k_base / o200k_base tokenizers, which were
+# observed to under-estimate by 1-4 tokens at 4 chars/token on dense scaffold
+# text. See tests/scaffold/test_real_tokenizer.py for the empirical comparison.
+# Stricter callers should plug in a real tokenizer per provider.
 def _approx_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+    return max(1, int(len(text) / 3.5))
 
 
 @dataclass

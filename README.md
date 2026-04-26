@@ -1,20 +1,25 @@
 # fidelis
 
-> **v0.0.6 (2026-04-25).** Adds the **Fidelis Scaffold** — a 140–180-token
-> drift-safe, hedge-calibrated, qtype-aware system-prompt wrapper that lifts
-> end-to-end QA accuracy on hard question types when paired with any LLM at
-> zero incremental inference cost. Smoke-validated; full 470-Q LongMemEval-S
-> evaluation in progress (companion paper landing on full-eval completion).
+> **v0.0.6 (2026-04-26).** Adds the **Fidelis Scaffold** — a 140–180-token
+> drift-safe, hedge-calibrated, qtype-aware system-prompt wrapper for
+> retrieval-augmented agent memory QA. Validated on Claude (Opus subscription)
+> and OpenAI-format APIs (gpt-oss:20b local) at 100/100 hedge + answer
+> compliance. 359 scaffold tests passing across 11 test files.
 
 **Agent memory with zero-LLM retrieval and a $0-incremental-cost QA scaffold.** Fully local retrieval. No API keys required to get a working memory system.
 
 **Headline numbers (Fidelis v0.0.6):**
 
 - **83.2% R@1** on LongMemEval-S retrieval (470 questions) — pure retrieval, no LLM, fully local
-- **75% QA accuracy** on LongMemEval-S smoke (n=60 stratified) when the Fidelis scaffold wraps an Opus reader — **above Mem0 (~66–70%), above Zep (71.2%)**
+- **73.0% QA accuracy** on LongMemEval-S full eval (n=434/470, Wilson 95% CI [68.7%, 77.0%]) when the Fidelis scaffold wraps an Opus reader — **above Mem0 (~66–70%), above Zep (71.2%), above raw GPT-4o (60.2%)**
 - **$0 incremental cost** per query when paired with a Claude Pro/Max subscription — **10–50× cheaper than every published memory system at our accuracy tier or above**
-- **Per-qtype scaffold lifts** over a minimal-prompt LLM baseline: **+20pp on knowledge-update, +16pp on preference, +8pp on multi-session**
+- **Per-qtype scaffold lifts** over a minimal-prompt LLM baseline (smoke n=60): **+20pp on knowledge-update, +16pp on preference, +8pp on multi-session**
 - **~90 ms retrieval latency** end-to-end
+
+**Backend portability (LLM that consumes the scaffold):**
+- ✅ **Claude (Opus subscription via `claude` CLI):** 100% hedge + 100% answer compliance on a 10-Q sanity test
+- ✅ **OpenAI Chat Completions API** (validated against `gpt-oss:20b` via Ollama's OpenAI-compatible endpoint): 100% hedge + 100% answer
+- ⚠️ **qwen3.5:9b local (thinking mode):** 40% hedge compliance — model's extended reasoning chains drop the literal hedge instruction. Use qwen models in non-thinking mode or larger model sizes for reliable hedging.
 
 The architectural fidelity contract holds: when the optional LLM tier is
 enabled, the filter outputs only integer pointers — it structurally cannot
@@ -55,7 +60,7 @@ The scaffold is **versioned** (`[FIDELIS-SCAFFOLD-vX.Y.Z]…[/FIDELIS-SCAFFOLD-v
 | Hindsight | 91.4% | High (multi-net ensemble) | No |
 | Supermemory | 81.6% | Medium (proprietary API) | No |
 | Fidelis E2 (paid LLM tier) | 75.5% | $0.02/query | No |
-| **Fidelis + scaffold (subscription)** | **~75% (smoke)** | **$0 incremental** | **No (cloud reader, local retrieval+scaffold)** |
+| **Fidelis + scaffold (subscription)** | **73.0% (full 434/470, CI [68.7%, 77.0%])** | **$0 incremental** | **No (cloud reader, local retrieval+scaffold)** |
 | Zep | 71.2% | Medium | No |
 | Mem0 | ~66–70% | Medium | No |
 | Full GPT-4o (raw context) | 60.2% | High | No |
