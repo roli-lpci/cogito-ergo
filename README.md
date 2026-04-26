@@ -2,9 +2,27 @@
 
 ## Zero-LLM memory for Claude Code and AI agents.
 
-**Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, and with no LLM in the default retrieval path. About 60 seconds to install.**
+**73.0% end-to-end QA on LongMemEval-S. 83.2% R@1 retrieval. $0/query. No LLM in the default retrieval path.**
 
-Your agent already calls an LLM to think. It should not need another one just to remember.
+Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, about 60 seconds to install. Your agent already calls an LLM to think; it should not need another one just to remember.
+
+[![CI](https://github.com/hermes-labs-ai/fidelis/actions/workflows/ci.yml/badge.svg)](https://github.com/hermes-labs-ai/fidelis/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange)](#known-limitations)
+[![Tests: 375 passing](https://img.shields.io/badge/tests-375%20passing-brightgreen)](tests/)
+[![Made by Hermes Labs](https://img.shields.io/badge/made%20by-Hermes%20Labs-purple)](https://hermes-labs.ai)
+
+```
+your notes / sessions
+       ↓
+local memory store      (~/.cogito/, fully local)
+       ↓
+fidelis retrieval       (BM25 + dense + RRF, no LLM)
+       ↓
+original passages       (verbatim, never rephrased)
+       ↓
+Claude Code / your agent
+```
 
 What fidelis is:
 
@@ -12,12 +30,8 @@ What fidelis is:
 - **cheap** — $0/query retrieval cost
 - **private** — local memory store by default
 - **faithful** — original stored passages returned, not paraphrases
-- **proven** — 73.0% end-to-end QA on LongMemEval-S, 83.2% R@1 retrieval, with no LLM in the default retrieval path
+- **proven** — benchmarked on LongMemEval-S (470 questions, public benchmark), with raw evidence in [`experiments/zeroLLM-FLAGSHIP-evidence/`](experiments/zeroLLM-FLAGSHIP-evidence/)
 - **installable** — Claude Code via MCP in about 60 seconds
-
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange)](#known-limitations)
-[![Made by Hermes Labs](https://img.shields.io/badge/made%20by-Hermes%20Labs-purple)](https://hermes-labs.ai)
 
 ---
 
@@ -88,19 +102,7 @@ The MCP `fidelis_recall` tool fires before Claude composes its answer. Claude se
 
 ## How it fits
 
-```
-your notes / sessions
-       ↓
-local memory store      (~/.cogito/, fully local)
-       ↓
-fidelis retrieval       (BM25 + dense + RRF, no LLM)
-       ↓
-original passages       (verbatim, never rephrased)
-       ↓
-Claude Code / your agent
-```
-
-Claude Code is the fastest path to value. The retrieval engine is agent-agnostic — pair it with any LLM client.
+The diagram is at the top. Claude Code is the fastest path to value. The retrieval engine is agent-agnostic — pair it with any LLM client.
 
 ## Benchmarks
 

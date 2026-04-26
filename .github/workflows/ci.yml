@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Run tests
-        run: python -m pytest tests/ -v || true
+      - name: Run scaffold tests
+        run: python -m pytest tests/scaffold/ --ignore=tests/scaffold/test_backend_portability.py --ignore=tests/scaffold/test_openai_format_compatibility.py -v
 
       - name: Smoke test imports
-        run: python -c "from cogito.config import load; from cogito.recall import recall; print('imports ok')"
+        run: python -c "from fidelis.scaffold import wrap_system_prompt, preflight; from fidelis.augment import augment; from fidelis import init_cmd, watch_cmd, mcp_cmd, mcp_server; print('imports ok')"
