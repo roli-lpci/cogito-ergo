@@ -20,6 +20,7 @@ from pathlib import Path
 DEFAULT_GLOB_PATTERNS = ("*.md", "*.txt")
 DEFAULT_MAX_FILES = 500
 DEFAULT_INTERVAL_S = 5.0
+DEFAULT_MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB — skip files larger than this
 LEDGER_PATH = Path.home() / ".fidelis" / "watched.json"
 
 
@@ -62,8 +63,14 @@ def _load_ledger() -> dict:
 
 
 def _save_ledger(ledger: dict) -> None:
+    """Atomic write: tempfile + os.replace prevents corruption if killed mid-write.
+
+    Uses parent/(name+".tmp") instead of with_suffix to be safe on Python 3.10/3.11
+    where with_suffix raised ValueError on multi-dot suffixes."""
     LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LEDGER_PATH.write_text(json.dumps(ledger, indent=2))
+    tmp = LEDGER_PATH.parent / (LEDGER_PATH.name + ".tmp")
+    tmp.write_text(json.dumps(ledger, indent=2))
+    os.replace(tmp, LEDGER_PATH)
 
 
 def _scan_files(root: Path, patterns: tuple, max_files: int) -> list[Path]:
@@ -77,7 +84,16 @@ def _scan_files(root: Path, patterns: tuple, max_files: int) -> list[Path]:
     return found
 
 
-def _ingest_file(path: Path, verbose: bool) -> bool:
+def _ingest_file(path: Path, verbose: bool, max_bytes: int = DEFAULT_MAX_FILE_BYTES) -> bool:
+    try:
+        size = path.stat().st_size
+    except OSError as e:
+        print(f"  [skip] {path}: {e}", file=sys.stderr)
+        return False
+    if size > max_bytes:
+        if verbose:
+            print(f"  [skip-toobig] {path} ({size:,} bytes > {max_bytes:,} cap)", file=sys.stderr)
+        return False
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:

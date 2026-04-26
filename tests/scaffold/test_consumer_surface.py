@@ -244,3 +244,66 @@ def test_init_cmd_locates_server_bin():
     from fidelis.init_cmd import _server_bin
     bin_path = _server_bin()
     assert "fidelis-server" in bin_path
+
+
+# ---------------------------------------------------------------------------
+# Bug-fix regression tests (Day 1.5 patches)
+# ---------------------------------------------------------------------------
+
+def test_watch_skips_oversized_files(tmp_path):
+    """B-fix: watch should skip files above DEFAULT_MAX_FILE_BYTES (10MB) without OOM."""
+    from fidelis.watch_cmd import _ingest_file, DEFAULT_MAX_FILE_BYTES
+    big = tmp_path / "huge.md"
+    big.write_text("x" * (DEFAULT_MAX_FILE_BYTES + 100))
+    # _ingest_file should return False without attempting to read full content
+    result = _ingest_file(big, verbose=False)
+    assert result is False
+
+
+def test_watch_ledger_atomic_write(tmp_path, monkeypatch):
+    """B-fix: ledger write should be atomic via tempfile + os.replace.
+
+    Verify by checking that no .tmp file lingers after a successful save."""
+    from fidelis import watch_cmd
+    ledger_path = tmp_path / "watched.json"
+    monkeypatch.setattr(watch_cmd, "LEDGER_PATH", ledger_path)
+    watch_cmd._save_ledger({"a": "h1"})
+    # No temp file should remain
+    assert not (tmp_path / "watched.json.tmp").exists()
+    assert ledger_path.exists()
+    assert json.loads(ledger_path.read_text()) == {"a": "h1"}
+
+
+def test_mcp_atomic_write_json(tmp_path):
+    """B-fix: settings.local.json write should be atomic to avoid concurrent-reader corruption."""
+    from fidelis.mcp_cmd import _atomic_write_json
+    target = tmp_path / "settings.json"
+    _atomic_write_json(target, {"mcpServers": {"fidelis": {"command": "x"}}})
+    assert target.exists()
+    assert not (tmp_path / "settings.json.tmp").exists()
+    assert json.loads(target.read_text())["mcpServers"]["fidelis"]["command"] == "x"
+
+
+def test_init_cmd_handles_systemctl_failure_gracefully(tmp_path, monkeypatch):
+    """B-fix: _install_linux should NOT raise CalledProcessError; should print
+    actionable error + return rc=1."""
+    import subprocess as sp_mod
+    from fidelis import init_cmd
+
+    # Make _server_bin return a fake path
+    monkeypatch.setattr(init_cmd, "_server_bin", lambda: "/usr/local/bin/fidelis-server")
+    # Redirect HOME so we don't touch real ~/.config
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    # Simulate systemctl daemon-reload failing
+    real_run = sp_mod.run
+
+    def fake_run(*args, **kwargs):
+        cmd = args[0] if args else kwargs.get("args", [])
+        if isinstance(cmd, list) and "systemctl" in cmd[0]:
+            return sp_mod.CompletedProcess(cmd, 1, stdout="", stderr="System has not been booted with systemd")
+        return real_run(*args, **kwargs)
+
+    monkeypatch.setattr(sp_mod, "run", fake_run)
+    rc = init_cmd._install_linux(uninstall=False)
+    assert rc == 1  # failure path returns clean exit code, not exception

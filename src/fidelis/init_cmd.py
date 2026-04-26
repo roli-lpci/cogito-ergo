@@ -174,9 +174,22 @@ def _install_linux(uninstall: bool = False) -> int:
 
     unit_path.write_text(unit)
     print(f"wrote {unit_path}")
-    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
-    subprocess.run(["systemctl", "--user", "enable", "fidelis-server.service"], check=True)
-    subprocess.run(["systemctl", "--user", "start", "fidelis-server.service"], check=True)
+    for cmd in (
+        ["systemctl", "--user", "daemon-reload"],
+        ["systemctl", "--user", "enable", "fidelis-server.service"],
+        ["systemctl", "--user", "start", "fidelis-server.service"],
+    ):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(
+                f"systemctl command failed: {' '.join(cmd)}\n"
+                f"  stdout: {result.stdout.strip()}\n"
+                f"  stderr: {result.stderr.strip()}\n"
+                f"  hint: ensure systemd --user is enabled (`loginctl enable-linger $USER`)\n"
+                f"        or fall back to running `fidelis-server` manually under your process manager",
+                file=sys.stderr,
+            )
+            return 1
     print("started fidelis-server.service")
     return 0
 
@@ -194,12 +207,17 @@ def _install_fallback(uninstall: bool = False) -> int:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     print(f"WARNING: platform '{platform.system()}' has no auto-start support; "
           "starting under nohup. Will NOT survive reboot.")
-    subprocess.Popen(
-        [server_bin],
-        stdout=open(log_path, "ab"),
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-    )
+    # Open + close in parent; pass fd duplicate to Popen so parent doesn't leak fd.
+    log_fh = open(log_path, "ab")
+    try:
+        subprocess.Popen(
+            [server_bin],
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    finally:
+        log_fh.close()
     return 0
 
 

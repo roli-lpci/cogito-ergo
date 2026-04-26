@@ -1,15 +1,18 @@
 """
-cogito CLI
+fidelis CLI
 
-  cogito recall "query"              two-stage recall via running server
-  cogito query  "query"              simple vector query (no filter)
-  cogito add    "text"               add a memory
-  cogito seed   ~/memory/ ~/notes/   bulk-seed from markdown files
-  cogito health                      check server health
-  cogito server                      start the server (alias for cogito-server)
+  fidelis init                       install + start service (launchd/systemd)
+  fidelis watch  ~/notes             auto-ingest a directory
+  fidelis mcp install                wire Claude Code MCP integration
+  fidelis recall "query"             two-stage recall via running server
+  fidelis query  "query"             simple vector query (no filter)
+  fidelis add    "text"              add a memory
+  fidelis seed   ~/memory/ ~/notes/  bulk-seed from markdown files
+  fidelis health                     check server health
+  fidelis server                     start the server (alias for fidelis-server)
 
-All commands talk to the HTTP server. Server must be running separately
-(cogito-server) or via your process manager of choice.
+All commands talk to the HTTP server. After `fidelis init` the service runs
+under your OS service manager (launchd on macOS, systemd on Linux).
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ import os
 
 
 def _base_url() -> str:
-    port = os.environ.get("COGITO_PORT", "19420")
+    # FIDELIS_PORT preferred; COGITO_PORT kept as backwards-compat alias.
+    port = os.environ.get("FIDELIS_PORT") or os.environ.get("COGITO_PORT", "19420")
     return f"http://127.0.0.1:{port}"
 
 
@@ -39,8 +43,8 @@ def _post(path: str, payload: dict) -> dict:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.URLError:
-        print(f"Error: cogito server not reachable at {_base_url()}", file=sys.stderr)
-        print("Start it with: cogito-server", file=sys.stderr)
+        print(f"Error: fidelis-server not reachable at {_base_url()}", file=sys.stderr)
+        print("Run `fidelis init` to install + start the service.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -49,7 +53,8 @@ def _get(path: str) -> dict:
         with urllib.request.urlopen(f"{_base_url()}{path}", timeout=5) as resp:
             return json.loads(resp.read())
     except urllib.error.URLError:
-        print(f"Error: cogito server not reachable at {_base_url()}", file=sys.stderr)
+        print(f"Error: fidelis-server not reachable at {_base_url()}", file=sys.stderr)
+        print("Run `fidelis init` to install + start the service.", file=sys.stderr)
         sys.exit(1)
 
 
@@ -185,8 +190,8 @@ def cmd_server(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="cogito",
-        description="cogito-ergo — memory layer for AI agents",
+        prog="fidelis",
+        description="fidelis — agent memory with zero-LLM retrieval and a $0-incremental QA scaffold",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -257,7 +262,7 @@ def main():
     p_cal.set_defaults(func=cmd_calibrate)
 
     # server
-    p_server = sub.add_parser("server", help="Start the cogito server")
+    p_server = sub.add_parser("server", help="Start the fidelis server")
     p_server.set_defaults(func=cmd_server)
 
     # init — install + start fidelis-server as a system service

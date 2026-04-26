@@ -8,10 +8,22 @@ named "fidelis" already exists.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 import time
 from pathlib import Path
+
+
+def _atomic_write_json(path: Path, data: dict) -> None:
+    """Write JSON atomically: temp file + os.replace. Prevents corruption if
+    Claude Code (or any reader) is reading the settings file concurrently.
+
+    Uses parent/(name+".tmp") instead of with_suffix to be safe on Python
+    3.10/3.11 where with_suffix raised ValueError on multi-dot suffixes."""
+    tmp = path.parent / (path.name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2))
+    os.replace(tmp, path)
 
 DEFAULT_SETTINGS = Path.home() / ".claude" / "settings.local.json"
 MCP_SERVER_NAME = "fidelis"
@@ -73,7 +85,7 @@ def cmd_mcp_install(args) -> int:
         "command": python_bin,
         "args": [str(MCP_SERVER_FILE)],
     }
-    settings_path.write_text(json.dumps(settings, indent=2))
+    _atomic_write_json(settings_path, settings)
     print(f"wrote MCP server '{MCP_SERVER_NAME}' to {settings_path}")
     print()
     print("next: restart Claude Code to pick up the new MCP server")
@@ -104,6 +116,6 @@ def cmd_mcp_uninstall(args) -> int:
     print(f"backed up to {backup}")
 
     del mcp_servers[MCP_SERVER_NAME]
-    settings_path.write_text(json.dumps(settings, indent=2))
+    _atomic_write_json(settings_path, settings)
     print(f"removed '{MCP_SERVER_NAME}' MCP server from {settings_path}")
     return 0

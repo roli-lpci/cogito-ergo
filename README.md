@@ -41,7 +41,7 @@ answer = augment(
 
 **Agent memory with zero-LLM retrieval and a $0-incremental-cost QA scaffold.** Fully local retrieval. No API keys required to get a working memory system.
 
-**Headline numbers (Fidelis v0.0.6):**
+**Headline numbers (Fidelis v0.1.0):**
 
 - **83.2% R@1** on LongMemEval-S retrieval (470 questions) — pure retrieval, no LLM, fully local
 - **73.0% QA accuracy** on LongMemEval-S full eval (n=434/470, Wilson 95% CI [68.7%, 77.0%]) when the Fidelis scaffold wraps an Opus reader — **above Mem0 (~66–70%), above Zep (71.2%), above raw GPT-4o (60.2%)**
@@ -60,7 +60,7 @@ corrupt, rephrase, or hallucinate into the content returned to your agent.
 See [Hybrid recall](#hybrid-recall) for the tier table and the honest
 ceiling on the benchmark-tuned path.
 
-## Fidelis Scaffold (new in v0.0.6)
+## Fidelis Scaffold (new in v0.1.0)
 
 The QA scaffold technique: a 140–180-token versioned, hedge-calibrated, qtype-aware system prompt that sits between Fidelis retrieval and your existing LLM, lifting end-to-end QA accuracy on hard question types without modifying the LLM and at zero incremental inference cost.
 
