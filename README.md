@@ -6,7 +6,6 @@
 
 Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, about 60 seconds to install. Your agent already calls an LLM to think; it should not need another one just to remember.
 
-[![CI](https://github.com/hermes-labs-ai/fidelis/actions/workflows/ci.yml/badge.svg)](https://github.com/hermes-labs-ai/fidelis/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange)](#known-limitations)
 [![Tests: 375 passing](https://img.shields.io/badge/tests-375%20passing-brightgreen)](tests/)
