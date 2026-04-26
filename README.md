@@ -1,12 +1,12 @@
 # fidelis
 
-## Agent memory without the retrieval tax.
+## Zero-LLM memory for Claude Code and AI agents.
 
-**Fidelity-preserving memory for Claude Code and AI agents — local-first, fast, and with no LLM in the default retrieval path.**
+**Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, and with no LLM in the default retrieval path. About 60 seconds to install.**
 
 Your agent already calls an LLM to think. It should not need another one just to remember.
 
-fidelis gives agents persistent memory that is:
+What fidelis is:
 
 - **fast** — ~90 ms local retrieval
 - **cheap** — $0/query retrieval cost
@@ -35,7 +35,19 @@ Requires Ollama + `nomic-embed-text` for local embeddings. See [Requirements](#r
 
 v0.0.8 — pre-release.
 
-## Memory mutates, it doesn't just forget
+## What you notice immediately
+
+After the four commands above, the next time you open Claude Code:
+
+- It stops asking you to repeat context you already wrote down.
+- You can ask "what did we decide last week about auth?" — and the answer cites your actual decision, not a generic OAuth lecture.
+- Architecture rationale you wrote in a markdown file two months ago surfaces when relevant.
+- Your project context carries across sessions instead of resetting at every new conversation.
+- Failed migration notes, naming conventions, founder voice memos — all queryable in your agent's normal flow.
+
+Most of fidelis's value is *not* the benchmark; it's not having to explain the same thing twice.
+
+## Most AI memory systems rewrite your notes
 
 Most memory systems rephrase content on the way out. The specific fact gets summarized into something general. fidelis solves this structurally — there is no LLM in the default retrieval path, so the store returns exactly what you put in.
 
@@ -190,11 +202,11 @@ Day 7: your agent starts carrying project context across sessions; you stop re-e
 
 Useful for solo builders today; relevant for teams that need memory to stay local tomorrow.
 
-## Going deeper
+## For technical users
 
 - [`docs/full-reference.md`](docs/full-reference.md) — full architecture, hybrid recall tiers, HTTP API, troubleshooting
 - [`docs/scaffold.md`](docs/scaffold.md) — Fidelis Scaffold contract + drift-detection markers
-- [`experiments/zeroLLM-FLAGSHIP-evidence/`](experiments/zeroLLM-FLAGSHIP-evidence/) — raw eval JSONs + machine-readable SUMMARY
+- [`experiments/zeroLLM-FLAGSHIP-evidence/`](experiments/zeroLLM-FLAGSHIP-evidence/) — raw eval JSONs + machine-readable SUMMARY (per-qtype breakdowns, Wilson CI, F1/F1B baselines)
 
 ## License
 
