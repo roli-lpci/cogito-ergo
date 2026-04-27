@@ -4,7 +4,7 @@
 
 **73.0% end-to-end QA on LongMemEval-S. 83.2% R@1 retrieval. $0/query. No LLM in the default retrieval path.**
 
-Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, about 60 seconds to install. Your agent already calls an LLM to think; it should not need another one just to remember.
+Stop re-explaining context to your agent. fidelis returns your original notes verbatim — local-first, fast, about 60 seconds to install. Your agent already calls an LLM to think; it should not need another one just to remember. Designed for developers. Built for SOC2-compliant enterprise agents.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Status: pre-release](https://img.shields.io/badge/status-pre--release-orange)](#known-limitations)
@@ -49,7 +49,7 @@ fidelis mcp install           # wires Claude Code
 # Restart Claude Code. Memory is on.
 ```
 
-Linux users swap `brew install ollama` for the equivalent install from [ollama.com](https://ollama.com). See [Requirements](#requirements).
+Linux users swap `brew install ollama` for the equivalent install from [ollama.com](https://ollama.com). [See Requirements](#requirements).
 
 v0.0.9 — pre-release.
 
@@ -103,6 +103,14 @@ Once `fidelis mcp install` is run, ask your agent:
 The MCP `fidelis_recall` tool fires before Claude composes its answer. Claude sees the original passages, not paraphrased summaries. The answer is grounded in what you wrote, with the qualifiers intact.
 
 > **fidelis retrieves memory without an LLM. Your agent still uses its normal LLM to answer using the retrieved context.** "Zero-LLM" applies to the memory hot path, not to your agent.
+
+## Use cases & ROI
+
+Three concrete reasons teams pick fidelis over hosted memory:
+
+- **Cost reduction.** Stop paying for redundant context-window tokens on every turn. Memory lives on disk; the agent pulls only what's relevant per query. At a few thousand calls/day the math against per-query memory APIs adds up fast.
+- **Security & compliance.** Zero data egress in the default zero-LLM path simplifies SOC2 / HIPAA scoping for the agent-memory layer — your notes never leave the box, so the memory store falls outside any third-party data-processor agreement.
+- **Team context.** Agents that remember historical decisions, naming conventions, failed migrations, and the *qualifiers* on those decisions. The non-configurable detail you wrote down two months ago surfaces when relevant, in the founder's voice, not paraphrased.
 
 ## How it fits
 
@@ -174,7 +182,7 @@ answer = augment(
     question="What did I say about Sarah?",
     qtype="single-session-user",
     llm_call=lambda system, user: client.messages.create(
-        model="claude-opus-4-7",  # use any current Claude Messages API model
+        model="claude-haiku-4-5",  # any current Claude Messages model works
         system=system,
         messages=[{"role": "user", "content": user}],
         max_tokens=512,
@@ -194,7 +202,7 @@ To stop: `fidelis init --uninstall`. To wipe: `rm -rf ~/.cogito ~/.fidelis`.
 
 ## Known limitations (v0.0.9 honest list)
 
-- **Pre-release.** API may change. Pin the version if you build on it.
+- **Pre-release.** Python function names and CLI commands may change. Pin the version if you build on it.
 - **Best on macOS Sequoia / Ubuntu 24.04 LTS.** Other OSes likely work but aren't gate-tested.
 - **Temporal-reasoning and preference questions are the weakest qtypes** in the QA scaffold (TR ~58%, Pref ~37% on the full eval). Single-session and knowledge-update qtypes are strong (95–100%).
 - **The optional LLM tier ("flagship" mode) currently escalates ~80% of queries instead of the intended ~10%** — an 8× cost miss we're transparent about. The default zero-LLM tier is unaffected.
@@ -208,9 +216,13 @@ Day 7: your agent starts carrying project context across sessions; you stop re-e
 
 Useful for solo builders today; relevant for teams that need memory to stay local tomorrow.
 
+## fidelis for teams / enterprise
+
+fidelis is open-source for single-player local use. If you're building a fleet of agents or need a centralized, RBAC-secured memory store deployed in your own VPC, contact us at **founders@hermes-labs.ai**.
+
 ## For technical users
 
-- [`docs/full-reference.md`](docs/full-reference.md) — full architecture, hybrid recall tiers, HTTP API, troubleshooting
+- [`docs/full-reference.md`](docs/full-reference.md) — full architecture, hybrid recall tiers, local server endpoints, troubleshooting
 - [`docs/scaffold.md`](docs/scaffold.md) — Fidelis Scaffold contract + drift-detection markers
 - [`experiments/zeroLLM-FLAGSHIP-evidence/`](experiments/zeroLLM-FLAGSHIP-evidence/) — raw eval JSONs + machine-readable SUMMARY (per-qtype breakdowns, Wilson CI, F1/F1B baselines)
 
